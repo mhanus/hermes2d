@@ -105,6 +105,10 @@ void Mesh::regularize_triangle(Element* e)
       e->sons[3] = NULL;
     }
 
+    //add to sons pointer to the parent
+    for(int i = 0; i < 4; i++)
+      if(e->sons[i] != NULL)
+        e->sons[i]->parent = e;
   }
 
   // store id of parent
@@ -225,6 +229,10 @@ void Mesh::regularize_quad(Element* e)
 
     }
 
+    //add to sons pointer to the parent
+    for(int i = 0; i < 4; i++)
+      if(e->sons[i] != NULL)
+        e->sons[i]->parent = e;
   }
 
   // store id of parent
