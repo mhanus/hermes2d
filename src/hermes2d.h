@@ -88,6 +88,8 @@
 #include "adapt_ortho_l2.h"
 #include "adapt_ortho_hcurl.h"
 
+#include "neighbor.h"
+
 void hermes2d_initialize(int* argc = NULL, char* argv[] = NULL);
 void hermes2d_finalize(bool force_quit = false);
 
