@@ -156,7 +156,7 @@ protected:
   double const_jacobian;
   double2x2 const_inv_ref_map;
 
-  static const int H2D_MAX_TABLES = g_max_quad + 1 + 4;
+  static const int max_tables = g_max_quad+1 + 4 * g_max_quad + 4;
 
   struct Node
   {

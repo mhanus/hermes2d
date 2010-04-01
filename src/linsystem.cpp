@@ -696,7 +696,7 @@ Func<double>* LinSystem::get_fn(PrecalcShapeset *fu, RefMap *rm, const int order
 // Caching transformed values
 void LinSystem::init_cache()
 {
-  for (int i = 0; i < g_max_quad + 1 + 4; i++)
+  for (int i = 0; i < g_max_quad+1 + 4 * g_max_quad + 4; i++)
   {
     cache_e[i] = NULL;
     cache_jwt[i] = NULL;
@@ -705,7 +705,7 @@ void LinSystem::init_cache()
 
 void LinSystem::delete_cache()
 {
-  for (int i = 0; i < g_max_quad + 1 + 4; i++)
+  for (int i = 0; i < g_max_quad+1 + 4 * g_max_quad + 4; i++)
   {
     if (cache_e[i] != NULL)
     {
