@@ -53,6 +53,17 @@ int main(int argc, char* argv[])
   // Perform initial mesh refinements.
   mesh.refine_towards_vertex(3, CORNER_REF_LEVEL);
 
+//  MeshView mview("neighbors_test", 100, 100, 500, 500);
+//  	 mview.show(&mesh);
+    // wait for keyboard or mouse input
+//     View::wait("Waiting for keyboard or mouse input.");
+
+     Element* e5;
+     e5 = mesh.get_element(5);
+     printf("edge: %d, %d \n", e5->en[0]->p1, e5->en[0]->p2);
+     e5 = mesh.get_element(4);
+     printf("edge: %d, %d \n", e5->en[0]->p1, e5->en[0]->p2);
+
   // Create an H1 space.
   H1Space space(&mesh, bc_types, essential_bc_values, P_INIT);
 
