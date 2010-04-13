@@ -372,8 +372,8 @@ void Neighbor::set_fn_values(Trans_flag flag){
 				int eo = quad->get_edge_points(neighbor_edge, max_order);
 				number_integ_points = quad->get_num_points(eo);
 
-				double* local_fn_values_n = new double[number_integ_points];
-				double* local_fn_values_c = new double[number_integ_points];
+				scalar* local_fn_values_n = new scalar[number_integ_points];
+				scalar* local_fn_values_c = new scalar[number_integ_points];
 
 				// fill function values of neighbor
 				sol->set_quad_order(eo);
