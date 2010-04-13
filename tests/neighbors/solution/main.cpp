@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
   H1Shapeset shapeset;
   PrecalcShapeset pss(&shapeset);
 
-  // create the L2 space
+  // create the H1 space
   H1Space space(&mesh, &shapeset);
   space.set_bc_types(bc_types);
 

@@ -11,12 +11,16 @@ if(NOT DEFINED HERMES)
     endif(REAL)
 endif(NOT DEFINED HERMES)
 
+set(HERMES_FLAGS "")
+
 if(COMPLEX)
 # if the complex version is being used, define 'COMPLEX'
 if(${HERMES} STREQUAL ${HERMES_CPLX_BIN})
-    set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS -DCOMPLEX)
+		set(HERMES_FLAGS "${HERMES_FLAGS} -DCOMPLEX")
 endif(${HERMES} STREQUAL ${HERMES_CPLX_BIN})
 endif(COMPLEX)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${HERMES_FLAGS}")
 
 include_directories(${UMFPACK_INCLUDE_DIR} ${AMD_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

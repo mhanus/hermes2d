@@ -56,7 +56,7 @@ private:
 	scalar* fn_values[max_n_trans]; //function values for active element
 	int np[max_n_trans];						// number of integration points for every neighbor
 	scalar* fn_values_neighbor[max_n_trans]; //function values for active element
-	int active_order; //order of active element
+	int central_order; //order of active element
 	int neighbor_order; //order of active element
 	// vector containing id's of all neighbors
 	std::vector<int> neighbors_id;
