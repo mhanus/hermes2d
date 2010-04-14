@@ -22,8 +22,6 @@ bool equal_double(double value, double compare_value)
 // The solution is function F bellow. Together with a mesh they were chosen to have wide range of function values,
 // to have continuous solution over the mesh and to suppress possibility of getting pass of the test even though it wouldn't.
 
-const int P_INIT = 9;
-
 // projected function
 double F(double x, double y)
 {
@@ -131,7 +129,7 @@ int main(int argc, char* argv[])
 	e = NULL;
   for_all_active_elements(e, &mesh)
   {
-  	neighb = new Neighbor(e, &sln);
+  	neighb = new Neighbor(e, &mesh, &sln, &space);
   	for(int i = 0; i < e->nvert; i++)
   	{
   		if(e->en[i]->bnd == 0){
