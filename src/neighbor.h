@@ -11,11 +11,11 @@ class HERMES2D_API Neighbor
 {
 public:
 
-	// constructor used for getting function values
-	Neighbor(Element* e, Solution* sln);
+	// Common constructor. The least what user has to provide is active element and mesh.
+	// If he wants also function values, he must provide a solution. The space is for improvement of the algorithm
+	// for choosing the order on the edge. Both, solution and space, has to be defined over the given mesh.
 
-	// constructor just for getting neighbors (now just theirs id)
-	Neighbor(Element* e, Mesh* mesh);
+	Neighbor(Element* e, Mesh* mesh, Solution* sln = NULL, Space* space = NULL);
 
 	~Neighbor();
 
@@ -49,6 +49,7 @@ private:
 	Element* central_el; // active element
 	Element* neighb_el;  // actual neighbor we are working with
 	Solution* sol;
+	Space* space;
 	int transformations[max_n_trans][max_n_trans];	// table of transformations for all neighbors
 	int n_trans[max_n_trans];  // number of transformations for every neighbor;
 	int active_edge;			     // edge where we are searching for neighbors
@@ -69,6 +70,13 @@ private:
 
 	// setting the sequence of function values of neighbor in same direction as on central element
 	void set_correct_direction(int parent1, int parent2, int part_of_edge);
+
+	// set order on the edge. Depends on if the space is given.
+	int get_max_order();
+
+	int get_edge_order(Element* e, int edge);
+
+	int get_edge_order_internal(Node* en);
 
 	// cleaning before usage of given edge
 	void clean_all();

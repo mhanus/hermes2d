@@ -1,29 +1,20 @@
 #include "neighbor.h"
 
-Neighbor::Neighbor(Element* e, Solution* sln){
-	central_el = e;
-	sol = sln;
-	quad = sln->get_quad_2d();
-	mesh = sln->get_mesh();
-	sol->set_active_element(central_el);
-	central_order = sol->get_fn_order();
-	for(int i = 0;  i < max_n_trans; i++)
-	{
-		fn_values[i] = NULL;
-		fn_values_neighbor[i] = NULL;
-	}
-	n_neighbors = 0;
-	neighbors_id.reserve(20 * e->nvert);
-	solution_flag = 1;
-};
-
-Neighbor::Neighbor(Element* e, Mesh* given_mesh)
+Neighbor::Neighbor(Element* e, Mesh* given_mesh, Solution* given_sln, Space* given_space)
 {
 	central_el = e;
-	sol = NULL;
-	quad = NULL;
 	mesh = given_mesh;
-	central_order = -1;
+	sol = given_sln;
+	space = given_space;
+	if(sol != NULL){
+		quad = sol->get_quad_2d();
+		sol->set_active_element(central_el);
+		central_order = sol->get_fn_order();
+	}
+	else{
+		quad = NULL;
+		central_order = -1;
+	}
 	for(int i = 0;  i < max_n_trans; i++)
 	{
 		fn_values[i] = NULL;
@@ -31,7 +22,6 @@ Neighbor::Neighbor(Element* e, Mesh* given_mesh)
 	}
 	n_neighbors = 0;
 	neighbors_id.reserve(20 * e->nvert);
-	solution_flag = 0;
 };
 
 
@@ -73,21 +63,21 @@ void Neighbor::set_active_edge(int edge)
 
 	active_edge = edge;
 
-	debug_log("central element: %d \n\n\n", central_el->id);
+	debug_log("central element: %d", central_el->id);
 	if (central_el->en[active_edge]->bnd == 0)
 	{
 		neighb_el = central_el->get_neighbor(active_edge);
 		// test if on the other side of the edge is active element
 		if (neighb_el != NULL)
 		{
-			debug_log("active neighbor el: %d \n", neighb_el->id);
+			debug_log("active neighbor el: %d", neighb_el->id);
 			for (int j = 0; j < neighb_el->nvert; j++)
 			{
 				if (central_el->en[active_edge] == neighb_el->en[j])
 				{
 					neighbor_edge = j;
 
-					if(solution_flag == 1){
+					if(sol != NULL){
 						// fill function values of central a neighbor element
 						set_fn_values(H2D_NO_TRANSF);
 
@@ -137,7 +127,7 @@ void Neighbor::set_active_edge(int edge)
 
 				finding_act_elem( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
 
-				debug_log("number of neighbors: %d \n", n_neighbors);
+				debug_log("number of neighbors: %d ", n_neighbors);
 			}
 		}
 	}
@@ -196,7 +186,7 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 			if ((edge->elem[i] != NULL) && (edge->elem[i]->active == 1)){
 
 				//getting to correct edge
-				debug_log("way up neighbor: %d \n", edge->elem[i]->id);
+				debug_log("way up neighbor: %d", edge->elem[i]->id);
 				neighb_el = edge->elem[i];
 				neighbor_edge = -1;
 				for(int j = 0; j < neighb_el->nvert; j++)
@@ -206,10 +196,9 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 
 				Node* n = NULL;
 
-				//not sure about it !!!!!!!!!!!!!!!
 				n_trans[n_neighbors] = n_road_vertices;
 				for(int k = 0 ; k < n_road_vertices; k++)
-					debug_log("vertices on the way: %d ", road_vertices[k]->id);
+					debug_log("vertices on the way: %d", road_vertices[k]->id);
 				debug_log("\n");
 
 				// go threw between elements and set correct transformation
@@ -223,19 +212,16 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 						if(n == NULL){
 							n = mesh->peek_vertex_node(road_vertices[j]->id, p2);
 							transformations[n_neighbors][n_road_vertices - j - 1] = neighbor_edge;
-//							sol->push_transform(neighbor_edge);
 							p1 = road_vertices[j]->id;
 						}
 						else{
 								if(n->id == road_vertices[j-1]->id){
 									transformations[n_neighbors][n_road_vertices - j - 1] = (neighbor_edge + 1) % neighb_el->nvert;
-//									sol->push_transform((neighbor_edge + 1) % neighb_el->nvert);
 									p2 = road_vertices[j]->id;
 								}
 								else{
 									n = mesh->peek_vertex_node(road_vertices[j]->id, p2);
 									transformations[n_neighbors][n_road_vertices - j - 1] = neighbor_edge;
-//									sol->push_transform(neighbor_edge);
 									p1 = road_vertices[j]->id;
 								}
 						}
@@ -249,14 +235,12 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 
 				if(test == 1){
 					transformations[n_neighbors][n_road_vertices - 1] = neighbor_edge;
-//					sln->push_transform(neighbor_edge);
 				}
 				else{
 					transformations[n_neighbors][n_road_vertices - 1] = (neighbor_edge + 1) % neighb_el->nvert;
-//					sln->push_transform((neighbor_edge + 1) % neighb_el->nvert);
 				}
 
-				if(solution_flag == 1){
+				if(sol != NULL){
 					// fill function values of central a neighbor element
 					set_fn_values(H2D_WAY_UP);
 
@@ -320,7 +304,7 @@ void Neighbor::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, in
 				if (edge->elem[j] != NULL)
 					if (edge->elem[j]->active == 1){
 
-						  debug_log("way down neighbor: %d \n", edge->elem[j]->id);
+						  debug_log("way down neighbor: %d", edge->elem[j]->id);
 							neighb_el = mesh->get_element(edge->elem[j]->id);
 
 							// getting to correct edge
@@ -336,7 +320,7 @@ void Neighbor::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, in
 							// + 1 is because how to n_road is computed it's one less then number of transformations
 							n_trans[n_neighbors] = n_road + 1;
 
-							if(solution_flag == 1){
+							if(sol != NULL){
 								// fill function values of central and neighbors elements
 								set_fn_values(H2D_WAY_DOWN);
 
@@ -367,7 +351,7 @@ void Neighbor::set_fn_values(Trans_flag flag){
 			{
 				sol->set_active_element(neighb_el);
 				neighbor_order = sol->get_fn_order();
-				int max_order = std::max(central_order, neighbor_order);
+				int max_order = get_max_order();
 
 				int eo = quad->get_edge_points(neighbor_edge, max_order);
 				number_integ_points = quad->get_num_points(eo);
@@ -394,7 +378,7 @@ void Neighbor::set_fn_values(Trans_flag flag){
 			{
 			sol->set_active_element(neighb_el);
 			neighbor_order = sol->get_fn_order();
-			int max_order = std::max(central_order, neighbor_order);
+			int max_order = get_max_order();
 
 			int eo = quad->get_edge_points(neighbor_edge, max_order);
 			number_integ_points = quad->get_num_points(eo);
@@ -431,7 +415,7 @@ void Neighbor::set_fn_values(Trans_flag flag){
 			}
 
 			neighbor_order = sol->get_fn_order();
-			int max_order = std::max(central_order, neighbor_order);
+			int max_order = get_max_order();
 
 			int eo = quad->get_edge_points(neighbor_edge, max_order);
 			number_integ_points = quad->get_num_points(eo);
@@ -501,6 +485,16 @@ void Neighbor::set_correct_direction(int parent1, int parent2, int part_of_edge)
 	}
 };
 
+int Neighbor::get_max_order(){
+	if(space != NULL){
+		central_order = get_edge_order(central_el, active_edge);
+		neighbor_order = get_edge_order(neighb_el, neighbor_edge);
+	}
+		return std::max(central_order, neighbor_order);
+};
+
+
+
 void Neighbor::clean_all()
 {
 	active_edge = -1;
@@ -561,4 +555,45 @@ std::vector<int>* Neighbor::get_neighbors()
 	return &neighbors_id;
 };
 
+// methods for getting order on the edge from space. Originally taken from class Space.
+
+int Neighbor::get_edge_order(Element* e, int edge)
+{
+  Node* en = e->en[edge];
+  if (en->id >= space->nsize || edge >= (int)e->nvert) return 0;
+
+  if (space->ndata[en->id].n == -1)
+    return get_edge_order_internal(space->ndata[en->id].base); // constrained node
+  else
+    return get_edge_order_internal(en);
+}
+
+
+int Neighbor::get_edge_order_internal(Node* en)
+{
+  assert(en->type == TYPE_EDGE);
+  Element** e = en->elem;
+  int o1 = 0, o2 = 0;
+  assert(e[0] != NULL || e[1] != NULL);
+
+  if (e[0] != NULL)
+  {
+    if (e[0]->is_triangle() || en == e[0]->en[0] || en == e[0]->en[2])
+      o1 = get_h_order(space->edata[e[0]->id].order);
+    else
+      o1 = get_v_order(space->edata[e[0]->id].order);
+  }
+
+  if (e[1] != NULL)
+  {
+    if (e[1]->is_triangle() || en == e[1]->en[0] || en == e[1]->en[2])
+      o2 = get_h_order(space->edata[e[1]->id].order);
+    else
+      o2 = get_v_order(space->edata[e[1]->id].order);
+  }
+
+  if (o1 == 0) return o2 == 0 ? 0 : o2;
+  if (o2 == 0) return o1;
+  return std::max(o1, o2);
+}
 
