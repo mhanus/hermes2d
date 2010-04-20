@@ -7,7 +7,7 @@
 #include "solution.h"
 
 
-class HERMES2D_API Neighbor
+class HERMES2D_API NeighborSearch
 {
 public:
 
@@ -15,15 +15,15 @@ public:
 	// If he wants also function values, he must provide a solution. The space is for improvement of the algorithm
 	// for choosing the order on the edge. Both, solution and space, has to be defined over the given mesh.
 
-	Neighbor(Element* e, Mesh* mesh, Solution* sln = NULL, Space* space = NULL);
+	NeighborSearch(Element* e, Mesh* mesh, MeshFunction* sln = NULL, Space* space = NULL);
 
-	~Neighbor();
+	~NeighborSearch();
 
 	//set active edge and compute all needed informations from neighbors, edge is local number of the edge
 	void set_active_edge(int edge);
 
 	// number of neighbor elements on edge
-	int number_of_neighbs();
+	int get_number_of_neighbs();
 
 	// return array of transformations of neighbor or central el.
 	int* get_transformations(int part_edge);
@@ -48,7 +48,7 @@ private:
 	Mesh* mesh;
 	Element* central_el; // active element
 	Element* neighb_el;  // actual neighbor we are working with
-	Solution* sol;
+	MeshFunction* sol;
 	Space* space;
 	int transformations[max_n_trans][max_n_trans];	// table of transformations for all neighbors
 	int n_trans[max_n_trans];  // number of transformations for every neighbor;

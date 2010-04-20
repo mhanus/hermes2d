@@ -1,6 +1,6 @@
 #include "neighbor.h"
 
-Neighbor::Neighbor(Element* e, Mesh* given_mesh, Solution* given_sln, Space* given_space)
+NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given_sln, Space* given_space)
 {
 	central_el = e;
 	mesh = given_mesh;
@@ -25,7 +25,7 @@ Neighbor::Neighbor(Element* e, Mesh* given_mesh, Solution* given_sln, Space* giv
 };
 
 
-Neighbor::~Neighbor()
+NeighborSearch::~NeighborSearch()
 {
 	for(int i = 0; i < max_n_trans; i++){
 		if(fn_values[i] != NULL)
@@ -56,7 +56,7 @@ be derived from local numbers of edges.
 
 For numbering and ordering of edges, vertices and sons of an element look into mesh.cpp
 */
-void Neighbor::set_active_edge(int edge)
+void NeighborSearch::set_active_edge(int edge)
 {
 	//erase all data from previous edge or element
 	clean_all();
@@ -144,7 +144,7 @@ void Neighbor::set_active_edge(int edge)
 *Important is that all sons have same orientation as parent, so local number of the edge is same.
 
 */
-void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices)
+void NeighborSearch::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices)
 {
 	Node* edge = NULL;
 	Node* vertex = NULL;
@@ -204,7 +204,6 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 				// go threw between elements and set correct transformation
 				for(int j = n_road_vertices; j > 0; j-- ){
 					if(road_vertices[j] == NULL){
-//						if(j > 0)
 							continue;
 					}
 					else{
@@ -265,7 +264,7 @@ void Neighbor::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_i
 
 
 //way down
-void Neighbor::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert)
+void NeighborSearch::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert)
 {
 	int son;
 	int parents[2];
@@ -342,7 +341,7 @@ void Neighbor::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, in
  *	The flag distinguish ways and according the way it is chosen on what element are applied transformations
  */
 
-void Neighbor::set_fn_values(Trans_flag flag){
+void NeighborSearch::set_fn_values(Trans_flag flag){
 
 	int number_integ_points = 0;
 
@@ -458,7 +457,7 @@ void Neighbor::set_fn_values(Trans_flag flag){
 // correct direction, means the orientation of function values on neighbor has to be same
 // as on central element
 
-void Neighbor::set_correct_direction(int parent1, int parent2, int part_of_edge)
+void NeighborSearch::set_correct_direction(int parent1, int parent2, int part_of_edge)
 {
 
 	int test = 0;
@@ -485,7 +484,7 @@ void Neighbor::set_correct_direction(int parent1, int parent2, int part_of_edge)
 	}
 };
 
-int Neighbor::get_max_order(){
+int NeighborSearch::get_max_order(){
 	if(space != NULL){
 		central_order = get_edge_order(central_el, active_edge);
 		neighbor_order = get_edge_order(neighb_el, neighbor_edge);
@@ -495,7 +494,7 @@ int Neighbor::get_max_order(){
 
 
 
-void Neighbor::clean_all()
+void NeighborSearch::clean_all()
 {
 	active_edge = -1;
 
@@ -523,41 +522,41 @@ void Neighbor::clean_all()
 
 
 
-int Neighbor::number_of_neighbs()
+int NeighborSearch::get_number_of_neighbs()
 {
 	if(n_neighbors == 0) error("called before setting common edge");
 	else return n_neighbors;
 };
 
-int* Neighbor::get_transformations(int part_edge)
+int* NeighborSearch::get_transformations(int part_edge)
 {
 	return transformations[part_edge];
 };
 
-scalar* Neighbor::get_fn_values_central(int part_edge)
+scalar* NeighborSearch::get_fn_values_central(int part_edge)
 {
 	return fn_values[part_edge];
 };
-scalar* Neighbor::get_fn_values_neighbor(int part_edge)
+scalar* NeighborSearch::get_fn_values_neighbor(int part_edge)
 {
 	return fn_values_neighbor[part_edge];
 };
 
 
-int Neighbor::get_n_integ_points(int part_edge)
+int NeighborSearch::get_n_integ_points(int part_edge)
 {
 	return np[part_edge];
 };
 
 
-std::vector<int>* Neighbor::get_neighbors()
+std::vector<int>* NeighborSearch::get_neighbors()
 {
 	return &neighbors_id;
 };
 
 // methods for getting order on the edge from space. Originally taken from class Space.
 
-int Neighbor::get_edge_order(Element* e, int edge)
+int NeighborSearch::get_edge_order(Element* e, int edge)
 {
   Node* en = e->en[edge];
   if (en->id >= space->nsize || edge >= (int)e->nvert) return 0;
@@ -569,7 +568,7 @@ int Neighbor::get_edge_order(Element* e, int edge)
 }
 
 
-int Neighbor::get_edge_order_internal(Node* en)
+int NeighborSearch::get_edge_order_internal(Node* en)
 {
   assert(en->type == TYPE_EDGE);
   Element** e = en->elem;

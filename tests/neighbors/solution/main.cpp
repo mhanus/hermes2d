@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
 
 
   // begin of test
-  Neighbor* neighb = NULL;
+  NeighborSearch* neighb = NULL;
   int n_neighbors = 0;
   scalar* fn_central = NULL;
   scalar* fn_neighbor = NULL;
@@ -129,12 +129,12 @@ int main(int argc, char* argv[])
 	e = NULL;
   for_all_active_elements(e, &mesh)
   {
-  	neighb = new Neighbor(e, &mesh, &sln, &space);
+  	neighb = new NeighborSearch(e, &mesh, &sln, &space);
   	for(int i = 0; i < e->nvert; i++)
   	{
   		if(e->en[i]->bnd == 0){
     		neighb->set_active_edge(i);
-  			n_neighbors = neighb->number_of_neighbs();
+  			n_neighbors = neighb->get_number_of_neighbs();
   			for(int j = 0; j < n_neighbors; j++)
   			{
   				fn_central = neighb->get_fn_values_central(j);
