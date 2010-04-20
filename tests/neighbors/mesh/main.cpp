@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
   // View::wait("Waiting for keyboard or mouse input.");
 
 	Element* e = NULL;
-	Neighbor* neighb = NULL;
+	NeighborSearch* neighb = NULL;
 	std::vector<int>* neighbors_id;
 	std::map<int, std::vector<int> > all_neighbors;
 	std::map<int, std::vector<int> >::iterator it; 
@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 
 	for_all_active_elements(e, &mesh){
 		test = 0;
-		neighb = new Neighbor(e, &mesh);
+		neighb = new NeighborSearch(e, &mesh);
 		for(int i = 0; i < e->nvert; i++){
 			if(e->en[i]->bnd == 0)
 				neighb->set_active_edge(i);
