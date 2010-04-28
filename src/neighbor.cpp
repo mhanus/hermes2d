@@ -22,6 +22,10 @@ NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given
 	}
 	n_neighbors = 0;
 	neighbors_id.reserve(20 * e->nvert);
+	values_central.reserve(20);
+	values_neighbor.reserve(20);
+
+	neighbor_edges.reserve(20);
 };
 
 
@@ -77,21 +81,35 @@ void NeighborSearch::set_active_edge(int edge)
 				{
 					neighbor_edge = j;
 
+					// get orientation of neighbor edge
+					int p1 = central_el->vn[active_edge]->id;
+					int p2 = central_el->vn[(active_edge + 1) % central_el->nvert]->id;
+
+					NeighborEdgeInfo local_edge_info;
+					local_edge_info.local_num_of_edge = neighbor_edge;
+
+					direction_neighbor_edge(p1, p2, 0, &local_edge_info);
+
+
 					if(sol != NULL){
 						// fill function values of central a neighbor element
 						set_fn_values(H2D_NO_TRANSF);
 
-						// set same direction as central element
-						int p1 = central_el->vn[active_edge]->id;
-						int p2 = central_el->vn[(active_edge + 1) % central_el->nvert]->id;
-						set_correct_direction(p1, p2, 0);
+						// test if the orientation is different,if so set same direction as on central element
+						if(local_edge_info.orientation == 1)
+							set_correct_direction();
+
 					}
+
+					// add the local_edge_info into the vector
+					neighbor_edges.push_back(local_edge_info);
 
 					// raise the number of neighbors
 					n_neighbors = n_neighbors++;
 
 					// add neighbor id to neighbors_id
 					neighbors_id.push_back(neighb_el->id);
+
 				}
 			}
 		} else
@@ -239,13 +257,25 @@ void NeighborSearch::finding_act_elem( Element* elem, int edge_num, int* orig_ve
 					transformations[n_neighbors][n_road_vertices - 1] = (neighbor_edge + 1) % neighb_el->nvert;
 				}
 
+
+				NeighborEdgeInfo local_edge_info;
+				local_edge_info.local_num_of_edge = neighbor_edge;
+
+				direction_neighbor_edge(id_of_par_orient_1, id_of_par_orient_2, 0, &local_edge_info);
+
+
 				if(sol != NULL){
 					// fill function values of central a neighbor element
 					set_fn_values(H2D_WAY_UP);
 
-					// set same direction as central element
-					set_correct_direction(id_of_par_orient_1, id_of_par_orient_2, i);
+					// test if the orientation is different,if so set same direction as on central element
+					if(local_edge_info.orientation == 1)
+						set_correct_direction();
 				}
+
+				// add the local_edge_info into the vector
+				neighbor_edges.push_back(local_edge_info);
+
 				// raise the number of neighbors
 				n_neighbors = n_neighbors++;
 
@@ -319,13 +349,25 @@ void NeighborSearch::finding_act_elem( Node* vertex, int* par_vertex_id, int* ro
 							// + 1 is because how to n_road is computed it's one less then number of transformations
 							n_trans[n_neighbors] = n_road + 1;
 
+
+							NeighborEdgeInfo local_edge_info;
+							local_edge_info.local_num_of_edge = neighbor_edge;
+
+							direction_neighbor_edge(parents[0], parents[1], i, &local_edge_info);
+
+
 							if(sol != NULL){
 								// fill function values of central and neighbors elements
 								set_fn_values(H2D_WAY_DOWN);
 
-								// set same direction as central element
-								set_correct_direction(parents[0], parents[1], i);
+								// test if the orientation is different,if so set same direction as on central element
+								if(local_edge_info.orientation == 1)
+									set_correct_direction();
 							}
+
+							// add the local_edge_info into the vector
+							neighbor_edges.push_back(local_edge_info);
+
 							// raise number of neighbors
 							n_neighbors = n_neighbors++;
 
@@ -360,16 +402,28 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 
 				// fill function values of neighbor
 				sol->set_quad_order(eo);
+
+				RefMap* rm = sol->get_refmap();
+				Func<scalar>* func;
+				func = init_fn(sol, rm, eo);
+				values_neighbor.push_back(func);
+
 				for(int i = 0; i < number_integ_points ; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
 				fn_values_neighbor[n_neighbors] = local_fn_values_n;
 
 
 				//fill the central
+
 				sol->set_active_element(central_el);
 				eo = quad->get_edge_points(active_edge, max_order);
 				sol->set_quad_order(eo);
 				for(int i = 0; i < number_integ_points ; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
 				fn_values[n_neighbors] = local_fn_values_c;
+
+				Func<scalar>* func1;
+				func1 = init_fn(sol, rm, eo);
+				values_central.push_back(func1);
+
 
 				break;
 			}
@@ -386,9 +440,17 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 			scalar* local_fn_values_n = new scalar[number_integ_points];
 
 			// fill function values of neighbor
+
 			sol->set_quad_order(eo);
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
 			fn_values_neighbor[n_neighbors] = local_fn_values_n;
+
+			RefMap* rm = sol->get_refmap();
+			Func<scalar>* func;
+			func = init_fn(sol, rm, eo);
+			values_neighbor.push_back(func);
+
+			//fill the central
 
 			sol->set_active_element(central_el);
 
@@ -396,11 +458,14 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 			for(int i = 0; i < n_trans[n_neighbors]; i++){
 				sol->push_transform(transformations[n_neighbors][i]);
 			}
-			//fill the central
 			eo = quad->get_edge_points(active_edge, max_order);
 			sol->set_quad_order(eo);
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
 			fn_values[n_neighbors] = local_fn_values_c;
+
+			Func<scalar>* func1;
+			func1 = init_fn(sol, rm, eo);
+			values_central.push_back(func1);
 
 			break;
 			}
@@ -423,18 +488,28 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 			scalar* local_fn_values_n = new scalar[number_integ_points];
 
 			// fill function values of neighbor
+
 			sol->set_quad_order(eo);
 
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
 			fn_values_neighbor[n_neighbors] = local_fn_values_n;
 
+			RefMap* rm = sol->get_refmap();
+			Func<scalar>* func;
+			func = init_fn(sol, rm, eo);
+			values_neighbor.push_back(func);
 	
 			//fill the central
+
 			sol->set_active_element(central_el);
 			eo = quad->get_edge_points(active_edge, max_order);
 			sol->set_quad_order(eo);
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
 			fn_values[n_neighbors] = local_fn_values_c;
+
+			Func<scalar>* func1;
+			func1 = init_fn(sol, rm, eo);
+			values_central.push_back(func1);
 
 			break;
 			}
@@ -454,12 +529,11 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 
 };
 
-// correct direction, means the orientation of function values on neighbor has to be same
-// as on central element
+// Here part_of_edge can be only 0 or 1. Different than 0 is meaningful only for way down.
+// Fills the info about orientation into edge_info.
 
-void NeighborSearch::set_correct_direction(int parent1, int parent2, int part_of_edge)
+void NeighborSearch::direction_neighbor_edge(int parent1, int parent2, int part_of_edge, NeighborEdgeInfo* edge_info)
 {
-
 	int test = 0;
 	int neighb_first_vertex = neighb_el->vn[neighbor_edge]->id;
 	if (part_of_edge == 0)
@@ -472,16 +546,41 @@ void NeighborSearch::set_correct_direction(int parent1, int parent2, int part_of
 			test = 1; // means the orientation is conversely
 	}
 
-	if (test == 1)
-	{
-		scalar local_fn_value = 0;
+	edge_info->orientation = test;
 
-		for (int i = 0; i < np[n_neighbors] / 2; i++){
-			local_fn_value = fn_values_neighbor[n_neighbors][i];
-			fn_values_neighbor[n_neighbors][i] = fn_values_neighbor[n_neighbors][np[n_neighbors] - i - 1];
-			fn_values_neighbor[n_neighbors][np[n_neighbors] - i - 1] = local_fn_value;
-		}
+}
+
+void NeighborSearch::reverse_vector(scalar* vector, int n)
+{
+	scalar local_value;
+
+	for(int i = 0; i < n / 2; i++)
+	{
+		local_value = vector[i];
+		vector[i] = vector[n - i - 1];
+		vector[n - i - 1] = local_value;
 	}
+}
+
+
+void NeighborSearch::set_correct_direction()
+{
+		scalar local_value = 0;
+		Func<scalar>* local_fun = values_neighbor.back();
+
+		reverse_vector(fn_values_neighbor[n_neighbors], np[n_neighbors]);
+
+		// change of the orientation for all values at local_fun, last member of the vector.
+			if(local_fun->nc == 1){
+				reverse_vector(local_fun->val, np[n_neighbors]);
+				reverse_vector(local_fun->dx, np[n_neighbors]);
+				reverse_vector(local_fun->dy, np[n_neighbors]);
+			}
+			else if(local_fun->nc == 2){
+				reverse_vector(local_fun->val0, np[n_neighbors]);
+				reverse_vector(local_fun->val1, np[n_neighbors]);
+				reverse_vector(local_fun->curl, np[n_neighbors]);
+			}
 };
 
 int NeighborSearch::get_max_order(){
@@ -518,6 +617,8 @@ void NeighborSearch::clean_all()
 		for(int j = 0; j < max_n_trans; j++)
 			transformations[i][j] = -1;
 	}
+	values_central.clear();
+	values_neighbor.clear();
 };
 
 
@@ -542,6 +643,15 @@ scalar* NeighborSearch::get_fn_values_neighbor(int part_edge)
 	return fn_values_neighbor[part_edge];
 };
 
+Func<scalar>* NeighborSearch::get_values_central(int part_edge)
+{
+	return values_central[part_edge];
+};
+
+Func<scalar>* NeighborSearch::get_values_neighbor(int part_edge)
+{
+	return values_neighbor[part_edge];
+};
 
 int NeighborSearch::get_n_integ_points(int part_edge)
 {
@@ -553,6 +663,24 @@ std::vector<int>* NeighborSearch::get_neighbors()
 {
 	return &neighbors_id;
 };
+
+int NeighborSearch::get_number_neighb_edge(int part_edge)
+{
+	if(part_edge >= neighbor_edges.size())
+		error("given number is bigger than actual number of neighbors ");
+	else
+		return neighbor_edges[part_edge].local_num_of_edge;
+};
+
+int NeighborSearch::get_orientation_neighb_edge(int part_edge)
+{
+	if(part_edge >= neighbor_edges.size())
+		error("given number is bigger than actual number of neighbors ");
+	else
+		return neighbor_edges[part_edge].orientation;
+};
+
+
 
 // methods for getting order on the edge from space. Originally taken from class Space.
 
