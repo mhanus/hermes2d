@@ -5,6 +5,7 @@
 #include "mesh.h"
 #include "quad.h"
 #include "solution.h"
+#include "forms.h"
 
 
 class HERMES2D_API NeighborSearch
@@ -34,11 +35,24 @@ public:
 	// return function values of active at integration points
 	scalar* get_fn_values_central(int part_edge);
 
+	// return pointer to function which contains all information from central
+	Func<scalar>* get_values_central(int part_edge);
+
+	// return pointer to function which contains all information from neighbor
+	Func<scalar>* get_values_neighbor(int part_edge);
+
+
 	// return number of integration points;
 	int get_n_integ_points(int part_edge);
 
 	// return pointer to the vector of neighbors id.
 	std::vector<int>* get_neighbors();
+
+	// return local number of neighbor edge
+	int get_number_neighb_edge(int part_edge);
+
+	// return orientation of neighbor edge
+	int get_orientation_neighb_edge(int part_edge);
 
 private:
 	const static int max_n_trans = 20;    //number of allowed transformations, see "push_transform" in transform.h
@@ -59,8 +73,13 @@ private:
 	scalar* fn_values_neighbor[max_n_trans]; //function values for active element
 	int central_order; //order of active element
 	int neighbor_order; //order of active element
+
 	// vector containing id's of all neighbors
 	std::vector<int> neighbors_id;
+
+	// vectors of all values (function, derivatives, etc.) for central and neighbors
+	std::vector<Func<scalar>*> values_central;
+	std::vector<Func<scalar>*> values_neighbor;
 
 	// way up for finding neighbor element, from smaller to larger
 	void finding_act_elem( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices);
@@ -68,8 +87,8 @@ private:
 	// way down for finding neighbor elements, from larger to smaller
 	void finding_act_elem( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert);
 
-	// setting the sequence of function values of neighbor in same direction as on central element
-	void set_correct_direction(int parent1, int parent2, int part_of_edge);
+	// setting the sequence of function values of neighbor in same direction as on central element.
+	void set_correct_direction();
 
 	// set order on the edge. Depends on if the space is given.
 	int get_max_order();
@@ -77,6 +96,22 @@ private:
 	int get_edge_order(Element* e, int edge);
 
 	int get_edge_order_internal(Node* en);
+
+	// Just reverse values in vector
+	void reverse_vector(scalar* vector, int n);
+
+	// Structure containing all needed info about neighbor's edge
+	struct NeighborEdgeInfo{
+		NeighborEdgeInfo(){
+			local_num_of_edge = -1;
+			orientation = -1;
+		}
+		int local_num_of_edge; // number of the edge at the neighbor element
+		int orientation; // if the orientation is same as on active edge is 0 otherwise 1
+	};
+
+	// find the orientation of the neighbor edge in relation with central edge.
+	void direction_neighbor_edge(int parent1, int parent2, int part_of_edge, NeighborEdgeInfo* edge_info);
 
 	// cleaning before usage of given edge
 	void clean_all();
@@ -91,6 +126,9 @@ private:
 	void set_fn_values(Trans_flag flag);
 
 	int solution_flag;  // if 1 then function values are computed.
+
+
+	std::vector<NeighborEdgeInfo> neighbor_edges; // vector containing all neighbor edges related to active edge
 
 };
 
