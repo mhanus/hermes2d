@@ -573,65 +573,155 @@ void LinSystem::assemble(bool rhsonly)
        // assemble surface integrals now: loop through boundary edges of the element
       for (unsigned int edge = 0; edge < e0->nvert; edge++)
       {
-        if (!bnd[edge]) continue;
+//        if (!bnd[edge]) continue;
         marker = ep[edge].marker;
-
         // obtain the list of shape functions which are nonzero on this edge
         for (unsigned int i = 0; i < s->idx.size(); i++) {
           if (e[i] == NULL) continue;
           int j = s->idx[i];
-          if ((nat[j] = (spaces[j]->bc_type_callback(marker) == BC_NATURAL)))
-            spaces[j]->get_edge_assembly_list(e[i], edge, &al[j]);
+
+          nat[j] = (spaces[j]->bc_type_callback(marker) == BC_NATURAL);
+//          if ((nat[j] = (spaces[j]->bc_type_callback(marker) == BC_NATURAL)))
+            spaces[j]->get_edge_assembly_list(e[i], edge, al + j);
         }
 
-        // assemble surface bilinear forms ///////////////////////////////////
-        for (unsigned int ww = 0; ww < s->bfsurf.size(); ww++)
+        if(bnd[edge] == 1)
         {
-          WeakForm::BiFormSurf* bfs = s->bfsurf[ww];
-          if (isempty[bfs->i] || isempty[bfs->j]) continue;
-          if (bfs->area != H2D_ANY && !wf->is_in_area(marker, bfs->area)) continue;
-          m = bfs->i;  fv = spss[m];  am = &al[m];
-          n = bfs->j;  fu = pss[n];   an = &al[n];
+					// assemble surface bilinear forms ///////////////////////////////////
+					for (unsigned int ww = 0; ww < s->bfsurf.size(); ww++)
+					{
+						WeakForm::BiFormSurf* bfs = s->bfsurf[ww];
+						if (isempty[bfs->i] || isempty[bfs->j]) continue;
+						if ((bfs->area != H2D_ANY_BOUNDARY_EDGE && bfs->area != H2D_ANY_EDGE) && !wf->is_in_area(marker, bfs->area)) continue;
+						m = bfs->i;  fv = spss[m];  am = &al[m];
+						n = bfs->j;  fu = pss[n];   an = &al[n];
 
-          if (!nat[m] || !nat[n]) continue;
-          ep[edge].base = trav.get_base();
-          ep[edge].space_v = spaces[m];
-          ep[edge].space_u = spaces[n];
+						if (!nat[m] || !nat[n]) continue;
+						ep[edge].base = trav.get_base();
+						ep[edge].space_v = spaces[m];
+						ep[edge].space_u = spaces[n];
 
-          scalar bi, **mat = get_matrix_buffer(std::max(am->cnt, an->cnt));
-          for (int i = 0; i < am->cnt; i++)
-          {
-            if ((k = am->dof[i]) < 0) continue;
-            fv->set_active_shape(am->idx[i]);
-            for (int j = 0; j < an->cnt; j++)
-            {
-              fu->set_active_shape(an->idx[j]);
-              bi = eval_form(bfs, fu, fv, &refmap[n], &refmap[m], &(ep[edge])) * an->coef[j] * am->coef[i];
-              if (an->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
-            }
-          }
-          insert_block(mat, am->dof, an->dof, am->cnt, an->cnt);
+							scalar bi, **mat = get_matrix_buffer(std::max(am->cnt, an->cnt));
+							for (int i = 0; i < am->cnt; i++)
+							{
+								if ((k = am->dof[i]) < 0) continue;
+								fv->set_active_shape(am->idx[i]);
+								for (int j = 0; j < an->cnt; j++)
+								{
+									fu->set_active_shape(an->idx[j]);
+									bi = eval_form(bfs, fu, fv, refmap+n, refmap+m, ep+edge) * an->coef[j] * am->coef[i];
+									if (an->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
+
+								}
+							}
+						insert_block(mat, am->dof, an->dof, am->cnt, an->cnt);
+					}
+
+					// assemble surface linear forms /////////////////////////////////////
+					for (unsigned int ww = 0; ww < s->lfsurf.size(); ww++)
+					{
+						WeakForm::LiFormSurf* lfs = s->lfsurf[ww];
+						if (isempty[lfs->i]) continue;
+						if ((lfs->area != H2D_ANY_BOUNDARY_EDGE && lfs->area != H2D_ANY_EDGE) && !wf->is_in_area(marker, lfs->area)) continue;
+						m = lfs->i;  fv = spss[m];  am = &al[m];
+						if (!nat[m]) continue;
+						ep[edge].base = trav.get_base();
+						ep[edge].space_v = spaces[m];
+						for (int i = 0; i < am->cnt; i++)
+						{
+							if (am->dof[i] < 0) continue;
+							fv->set_active_shape(am->idx[i]);
+							RHS[am->dof[i]] += eval_form(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+						}
+					}
         }
-
-        // assemble surface linear forms /////////////////////////////////////
-        for (unsigned int ww = 0; ww < s->lfsurf.size(); ww++)
+        else
         {
-          WeakForm::LiFormSurf* lfs = s->lfsurf[ww];
-          if (isempty[lfs->i]) continue;
-          if (lfs->area != H2D_ANY && !wf->is_in_area(marker, lfs->area)) continue;
-          m = lfs->i;  fv = spss[m];  am = &al[m];
+					// assemble surface bilinear forms ///////////////////////////////////
+					for (unsigned int ww = 0; ww < s->bfsurf.size(); ww++)
+					{
+						WeakForm::BiFormSurf* bfs = s->bfsurf[ww];
 
-          if (!nat[m]) continue;
-          ep[edge].base = trav.get_base();
-          ep[edge].space_v = spaces[m];
-          for (int i = 0; i < am->cnt; i++)
-          {
-            if (am->dof[i] < 0) continue;
-            fv->set_active_shape(am->idx[i]);
-            RHS[am->dof[i]] += eval_form(lfs, fv, &refmap[m], &(ep[edge])) * am->coef[i];
-          }
+						if (isempty[bfs->i] || isempty[bfs->j]) continue;
+
+						if(wf->areas.size() == 0){
+							debug_log("the vector: areas for the surface form wasn't filled by def_area()");
+							continue;
+						}
+
+						if ((bfs->area != H2D_ANY_EDGE && bfs->area != H2D_ANY_INNER_EDGE) && !wf->is_in_area(marker, bfs->area)) continue;
+
+						m = bfs->i;  fv = spss[m];  am = &al[m];
+						n = bfs->j;  fu = pss[n];   an = &al[n];
+
+						if (!nat[m] || !nat[n]) continue;
+						ep[edge].base = trav.get_base();
+						ep[edge].space_v = spaces[m];
+						ep[edge].space_u = spaces[n];
+
+						if(bfs->area == H2D_ANY_EDGE)
+						{
+							scalar bi, **mat = get_matrix_buffer(std::max(am->cnt, an->cnt));
+							for (int i = 0; i < am->cnt; i++)
+							{
+								if ((k = am->dof[i]) < 0) continue;
+								fv->set_active_shape(am->idx[i]);
+								for (int j = 0; j < an->cnt; j++)
+								{
+									fu->set_active_shape(an->idx[j]);
+									bi = eval_form(bfs, fu, fv, refmap+n, refmap+m, ep+edge) * an->coef[j] * am->coef[i];
+									if (an->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
+									}
+								}
+							insert_block(mat, am->dof, an->dof, am->cnt, an->cnt);
+						}
+						// still will be filled when this optionality would be needed.
+						else if(bfs->area == H2D_ANY_INNER_EDGE)
+							continue;
+						else
+							continue;
+					}
+
+					// assemble surface linear forms /////////////////////////////////////
+					for (unsigned int ww = 0; ww < s->lfsurf.size(); ww++)
+					{
+						WeakForm::LiFormSurf* lfs = s->lfsurf[ww];
+						if (isempty[lfs->i]) continue;
+						if(wf->areas.size() == 0){
+							debug_log("the vector: areas for the surface form wasn't filled by def_area()");
+							continue;
+						}
+
+						if ((lfs->area != H2D_ANY_EDGE && lfs->area != H2D_ANY_INNER_EDGE) && !wf->is_in_area(marker, lfs->area)) continue;
+						m = lfs->i;  fv = spss[m];  am = &al[m];
+
+						if (!nat[m]) continue;
+						ep[edge].base = trav.get_base();
+						ep[edge].space_v = spaces[m];
+
+						if(lfs->area == H2D_ANY_EDGE)
+						{
+							for (int i = 0; i < am->cnt; i++)
+							{
+								if (am->dof[i] < 0) continue;
+								fv->set_active_shape(am->idx[i]);
+								RHS[am->dof[i]] += eval_form(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+							}
+						}
+						// here the form will use for evaluation information from neighbors
+						else if(lfs->area == H2D_ANY_INNER_EDGE)
+						{
+							for (int i = 0; i < am->cnt; i++)
+							{
+								if (am->dof[i] < 0) continue;
+								fv->set_active_shape(am->idx[i]);
+								RHS[am->dof[i]] += eval_form_neighbor(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+							}
+						}
+						else
+							continue;
+					}
         }
-
       }
       delete_cache();
     }
@@ -885,6 +975,38 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
                     // are defined in (-1, 1). Thus multiplying with 0.5 to correct
                     // the weights.
 }
+
+// Actual evaluation of surface linear form, just in case using informations from neighbors.
+// Used only for inner edges.
+scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
+{
+  // eval the form
+  Quad2D* quad = fv->get_quad_2d();
+  int eo = quad->get_edge_points(ep->edge);
+  double3* pt = quad->get_points(eo);
+  int np = quad->get_num_points(eo);
+  // init geometry and jacobian*weights
+  if (cache_e[eo] == NULL)
+  {
+    cache_e[eo] = init_geom_surf(rv, ep, eo);
+    double3* tan = rv->get_tangent(ep->edge);
+    cache_jwt[eo] = new double[np];
+    for(int i = 0; i < np; i++)
+      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+  }
+  Geom<double>* e = cache_e[eo];
+  double* jwt = cache_jwt[eo];
+  // function values and values of external functions
+  Func<double>* v = get_fn(fv, rv, eo);
+  ExtData<scalar>* ext = init_ext_fns(lf->ext, rv, eo);
+  scalar res = lf->fn(np, jwt, v, e, ext);
+  ext->free(); delete ext;
+  return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights
+                    // are defined in (-1, 1). Thus multiplying with 0.5 to correct
+                    // the weights.
+}
+
+
 
 
 //// solve /////////////////////////////////////////////////////////////////////////////////////////

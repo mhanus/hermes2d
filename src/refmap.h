@@ -114,14 +114,16 @@ public:
   /// 1D quadrature rule is always used.
   double3* get_tangent(int edge)
   {
-  	int max_order = -1;
+  	int edge_order = -1;
   	if(quad_2d != NULL)
-  		max_order = quad_2d->get_max_order();
+  		edge_order = quad_2d->get_edge_points(edge);
   	else
   		error("2d quadrature wasn't set.");
 
   	delete[] cur_node->tan[edge];
-		get_tangent(edge, max_order);
+  	cur_node->tan[edge] = NULL;
+
+		get_tangent(edge, edge_order);
 
     return cur_node->tan[edge];
   }
@@ -129,7 +131,11 @@ public:
   /// This version behaves same as the above, but now for arbitrary given order.
   double3* get_tangent(int edge, int order)
 	{
-  	delete[] cur_node->tan[edge];
+  	if(cur_node->tan[edge] != NULL)
+  	{
+  		delete[] cur_node->tan[edge];
+  		cur_node->tan[edge] = NULL;
+  	}
   	calc_tangent(edge, order);
     return cur_node->tan[edge];
   }
