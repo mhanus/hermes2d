@@ -189,13 +189,21 @@ public:
     for (int i = 0; i < nf; i++)
     {
       fn[i]->free_fn();
-      fn_neighbor[i]->free_fn();
       delete fn[i];
-      delete fn_neighbor[i];
     }
     delete [] fn;
+  }
+
+  void free_neighbor()
+  {
+    for (int i = 0; i < nf; i++)
+    {
+      fn_neighbor[i]->free_fn();
+      delete fn_neighbor[i];
+    }
     delete [] fn_neighbor;
   }
+
 
   void free_ord()
   {
@@ -217,11 +225,14 @@ public:
   {
   	return fn_neighbor[index];
   }
+
+	void set_nf_neighbor(int n){ nf_neighbor = n;}
+
+	void set_fn_neighbor(Func<T>** functions){fn_neighbor = functions;}
 private:
 	int nf_neighbor;			  			// number of functions in 'fn_neighbor' array
 	Func<T>** fn_neighbor;				// array of pointers to functions on neighbor element
-//	void set_nf_neighbor(int n);
-//	void set_fn_neighbor(Func<T>** functions);
+
 };
 
 #endif

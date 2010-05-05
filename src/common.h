@@ -69,6 +69,14 @@ enum // element modes
 
 const int ANY = -1234;
 
+enum Edges_flag
+{
+	ANY_BOUNDARY_EDGE = ANY,
+	ANY_EDGE = -12345,
+	ANY_INNER_EDGE = -123456,
+};
+
+
 // how many bits the order number takes
 const int order_bits = 5;
 const int order_mask = (1 << order_bits) - 1;

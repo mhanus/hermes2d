@@ -83,3 +83,13 @@ void L2Space::get_bubble_assembly_list(Element* e, AsmList* al)
 }
 
 
+void L2Space::get_edge_assembly_list_internal(Element* e, int ie, AsmList* al)
+{
+	// For computations when user compute flux over edges.
+	if(e->en[ie]->bnd == 0)
+		get_bubble_assembly_list(e, al);
+}
+
+
+
+

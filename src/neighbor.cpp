@@ -619,6 +619,7 @@ void NeighborSearch::clean_all()
 	}
 	values_central.clear();
 	values_neighbor.clear();
+	neighbor_edges.clear();
 };
 
 
