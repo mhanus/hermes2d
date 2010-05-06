@@ -1019,6 +1019,97 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
 // Used only for inner edges.
 scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {
+
+  Quad2D* quad = fv->get_quad_2d();
+
+
+	Element* el;
+	el = rv->get_active_element();
+	Mesh* mesh;
+	MeshFunction* function;
+	NeighborSearch* neighb;
+	Space* space = ep->space_v;
+
+
+	neighb = new NeighborSearch(e, mesh, function, space);
+	neighb->set_active_edge(ep->edge);
+	int n_neighbors = neighb->get_number_of_neighbs();
+	std::vector<int>* max_of_orders = neighb->get_orders();
+
+	for(int i = 0; i < n_neighbors; i++)
+	{
+
+	  ExtData<scalar>* ext_data = new ExtData<scalar>;
+	  Func<scalar>** ext_fn_central = new Func<scalar>*[ext.size()];
+	  Func<scalar>** ext_fn_neighbor = new Func<scalar>*[ext.size()];
+
+		int eo = quad->get_edge_points(ep->edge,max_of_orders[i]);
+	  double3* pt = quad->get_points(eo);
+
+		for(int j = 0; j < lf->ext.size(); j++)
+		{
+			if(n_neighbors == 1) //way up or active element
+			{
+				int* transformations = neighb->get_transformations(0);
+				if(transformations[0] != -1) // its way up
+				{
+
+
+
+
+				}
+			  // init geometry and jacobian*weights
+				  if (cache_e[eo] == NULL)
+				  {
+				    cache_e[eo] = init_geom_surf(rv, ep, eo);
+				    double3* tan = rv->get_tangent(ep->edge, max_of_orders[j]);
+				    cache_jwt[eo] = new double[np];
+				    for(int i = 0; i < np; i++)
+				      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+				  }
+				  Geom<double>* e = cache_e[eo];
+				  double* jwt = cache_jwt[eo];
+
+
+			}
+
+	    ext_fn_central[j] = neighb->get_values_central(part_of_edge);
+	    ext_fn_neighbor[j] = neighb->get_values_neighbor(part_of_edge);
+
+
+		}
+
+
+
+		  ext_data->fn = ext_fn_central;
+		  ext_data->nf = ext.size();
+		  ext_data->set_fn_neighbor(ext_fn_neighbor);
+		  ext_data->set_nf_neighbor(ext.size());
+
+		  // init geometry and jacobian*weights
+		  if (cache_e[eo] == NULL)
+		  {
+		    cache_e[eo] = init_geom_surf(rv, ep, eo);
+		    double3* tan = rv->get_tangent(ep->edge, max_of_orders[j]);
+		    cache_jwt[eo] = new double[np];
+		    for(int i = 0; i < np; i++)
+		      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+		  }
+		  Geom<double>* e = cache_e[eo];
+		  double* jwt = cache_jwt[eo];
+
+		  // function values
+		  Func<double>* v = get_fn(fv, rv, eo);
+
+		  scalar res = lf->fn(np, jwt, v, e, ext);
+		  ext->free();
+		  ext->free_neighbor();
+		  delete ext;
+
+	}
+
+
+
   // eval the form
   Quad2D* quad = fv->get_quad_2d();
   int eo = quad->get_edge_points(ep->edge);
