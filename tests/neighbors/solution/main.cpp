@@ -1,6 +1,7 @@
 #include "hermes2d.h"
 #include "solver_umfpack.h"
-
+#include <iostream>
+using namespace std;
 // This test is for testing if works in proper way transformation of solution on central or neighbor element and if
 // afterward orientation of neighbors array of function values is done right.
 
@@ -42,9 +43,18 @@ Scalar linear_form(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData<Scal
 {
   Scalar result = 0;
   for (int i = 0; i < n; i++)
-    result += wt[i] * (( 2*pow(e->x[i] - 0.5, 2) + 6 * pow(e->y[i] + 0.7, 2) - 25) * v->val[i]);  //( 2*pow(e->x[i] - 0.5, 2) + 6 * pow(e->y[i] + 0.7, 2) - 25)
+    result += wt[i] * (( 2*pow(e->x[i] - 0.5, 2) + 6 * pow(e->y[i] + 0.7, 2) - 25) * v->val[i]);
   return result;
 }
+template<typename Real, typename Scalar>
+Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext)
+{
+	Scalar result;
+	for(int i = 0; i < n; i++)
+		result += ext->fn[0]->val[i] + ext->get_fn_neighbor(0)->val[i] ;
+	return result+1;
+}
+
 
 // boundary conditions
 int bc_types(int marker)
@@ -96,7 +106,8 @@ int main(int argc, char* argv[])
 	// enumerate basis functions
   space.assign_dofs();
   Solution sln;
-
+  Solution xprev;
+  xprev.set_zero(&mesh);
   // matrix solver
   UmfpackSolver umfpack;
 
@@ -104,6 +115,7 @@ int main(int argc, char* argv[])
   WeakForm wf(1);
   wf.add_biform(0, 0, callback(bilinear_form));
   wf.add_liform(0, callback(linear_form));
+  wf.add_liform_surf(0, callback(linear_form_surf), ANY_INNER_EDGE, 1, &xprev);
 
   // assemble and solve the finite element problem
   LinSystem sys(&wf, &umfpack);
