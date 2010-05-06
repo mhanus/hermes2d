@@ -133,7 +133,7 @@ void NeighborSearch::set_active_edge(int edge)
 				for (int j = 0; j < max_n_trans; j++)
 					road_vertices[j] = NULL;
 
-				finding_act_elem(parent, active_edge, orig_vertex_id, road_vertices, n_road_vertices);
+				finding_act_elem_up(parent, active_edge, orig_vertex_id, road_vertices, n_road_vertices);
 
 				delete[] road_vertices;
 			} else
@@ -143,7 +143,7 @@ void NeighborSearch::set_active_edge(int edge)
 				int road[max_n_trans]; //array for temporal transformation
 				int n_road = 0; //number of used transformations
 
-				finding_act_elem( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
+				finding_act_elem_down( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
 
 				debug_log("number of neighbors: %d ", n_neighbors);
 			}
@@ -162,7 +162,7 @@ void NeighborSearch::set_active_edge(int edge)
 *Important is that all sons have same orientation as parent, so local number of the edge is same.
 
 */
-void NeighborSearch::finding_act_elem( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices)
+void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices)
 {
 	Node* edge = NULL;
 	Node* vertex = NULL;
@@ -194,7 +194,7 @@ void NeighborSearch::finding_act_elem( Element* elem, int edge_num, int* orig_ve
 	}
 	
 	if ((edge == NULL) || (central_el->en[edge_num]->id == edge->id)){
-		finding_act_elem(elem->parent, edge_num, orig_vertex_id, road_vertices, n_road_vertices);
+		finding_act_elem_up(elem->parent, edge_num, orig_vertex_id, road_vertices, n_road_vertices);
 	}
 	else
 		for (int i = 0; i < 2; i++)
@@ -294,7 +294,7 @@ void NeighborSearch::finding_act_elem( Element* elem, int edge_num, int* orig_ve
 
 
 //way down
-void NeighborSearch::finding_act_elem( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert)
+void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert)
 {
 	int son;
 	int parents[2];
@@ -324,7 +324,7 @@ void NeighborSearch::finding_act_elem( Node* vertex, int* par_vertex_id, int* ro
 				else par_vertex_id[0] = son;
 
 				int n_road_next = n_road + 1;
-				finding_act_elem( n, par_vertex_id, road, n_road_next, use_edge, n_vert);
+				finding_act_elem_down( n, par_vertex_id, road, n_road_next, use_edge, n_vert);
 			}
 		} else
 			//test if on one of sides is active element
@@ -394,6 +394,8 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 				neighbor_order = sol->get_fn_order();
 				int max_order = get_max_order();
 
+				orders.push_back(max_order);
+
 				int eo = quad->get_edge_points(neighbor_edge, max_order);
 				number_integ_points = quad->get_num_points(eo);
 
@@ -432,6 +434,8 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 			sol->set_active_element(neighb_el);
 			neighbor_order = sol->get_fn_order();
 			int max_order = get_max_order();
+
+			orders.push_back(max_order);
 
 			int eo = quad->get_edge_points(neighbor_edge, max_order);
 			number_integ_points = quad->get_num_points(eo);
@@ -480,6 +484,8 @@ void NeighborSearch::set_fn_values(Trans_flag flag){
 
 			neighbor_order = sol->get_fn_order();
 			int max_order = get_max_order();
+
+			orders.push_back(max_order);
 
 			int eo = quad->get_edge_points(neighbor_edge, max_order);
 			number_integ_points = quad->get_num_points(eo);
@@ -664,6 +670,12 @@ std::vector<int>* NeighborSearch::get_neighbors()
 {
 	return &neighbors_id;
 };
+
+std::vector<int>* NeighborSearch::get_orders()
+{
+	return & orders;
+};
+
 
 int NeighborSearch::get_number_neighb_edge(int part_edge)
 {

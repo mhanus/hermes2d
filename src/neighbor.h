@@ -54,6 +54,10 @@ public:
 	// return orientation of neighbor edge
 	int get_orientation_neighb_edge(int part_edge);
 
+	// each member of the vector contains maximum of orders of central and neighbor element.
+	std::vector<int>* get_orders();
+
+
 private:
 	const static int max_n_trans = 20;    //number of allowed transformations, see "push_transform" in transform.h
 
@@ -76,16 +80,17 @@ private:
 
 	// vector containing id's of all neighbors
 	std::vector<int> neighbors_id;
+	std::vector<int> orders;
 
 	// vectors of all values (function, derivatives, etc.) for central and neighbors
 	std::vector<Func<scalar>*> values_central;
 	std::vector<Func<scalar>*> values_neighbor;
 
 	// way up for finding neighbor element, from smaller to larger
-	void finding_act_elem( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices);
+	void finding_act_elem_up( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices);
 
 	// way down for finding neighbor elements, from larger to smaller
-	void finding_act_elem( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert);
+	void finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert);
 
 	// setting the sequence of function values of neighbor in same direction as on central element.
 	void set_correct_direction();
