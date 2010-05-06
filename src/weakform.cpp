@@ -106,7 +106,7 @@ void WeakForm::add_matrix_form_surf(int i, int j, biform_val_t fn, biform_ord_t 
 {
   if (i < 0 || i >= neq || j < 0 || j >= neq)
     error("Invalid equation number.");
-  if (area != H2D_ANY && area < 0 && -area > (int)areas.size())
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   BiFormSurf form = { i, j, area, fn, ord };
@@ -208,7 +208,7 @@ void WeakForm::add_vector_form_surf(int i, liform_val_t fn, liform_ord_t ord, in
 {
   if (i < 0 || i >= neq)
     error("Invalid equation number.");
-  if (area != H2D_ANY && area < 0 && -area > (int)areas.size())
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   LiFormSurf form = { i, area, fn, ord };

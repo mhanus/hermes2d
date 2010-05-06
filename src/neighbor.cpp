@@ -626,6 +626,7 @@ void NeighborSearch::clean_all()
 	values_central.clear();
 	values_neighbor.clear();
 	neighbor_edges.clear();
+	orders.clear();
 };
 
 
@@ -673,7 +674,7 @@ std::vector<int>* NeighborSearch::get_neighbors()
 
 std::vector<int>* NeighborSearch::get_orders()
 {
-	return & orders;
+	return &orders;
 };
 
 
