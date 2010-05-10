@@ -57,6 +57,13 @@ public:
 	// each member of the vector contains maximum of orders of central and neighbor element.
 	std::vector<int>* get_orders();
 
+	// set the order of the integration 
+	void set_order_of_integration(int order);
+
+	// set meshfunction (solution), this method is used in case you want to get values of different solutions over the same edge.
+	// Don't have to make another instance of the class.
+	void set_solution(MeshFunction* solution);
+
 
 private:
 	const static int max_n_trans = 20;    //number of allowed transformations, see "push_transform" in transform.h
@@ -74,12 +81,16 @@ private:
 	int neighbor_edge;		   	// edge of the neighbor respective to active_edge
 	scalar* fn_values[max_n_trans]; //function values for active element
 	int np[max_n_trans];						// number of integration points for every neighbor
-	scalar* fn_values_neighbor[max_n_trans]; //function values for active element
-	int central_order; //order of active element
-	int neighbor_order; //order of active element
+	scalar* fn_values_neighbor[max_n_trans]; // function values for active element
+	int central_order;  // order of active element
+	int neighbor_order; // order of active element
+	int max_of_orders;  // initial set equal to -1, else set by method set_order_of_integration().
+	int way_flag; // this flag holds which way was used on the active edge.
+
 
 	// vector containing id's of all neighbors
 	std::vector<int> neighbors_id;
+	std::vector<Element*> neighbors;
 	std::vector<int> orders;
 
 	// vectors of all values (function, derivatives, etc.) for central and neighbors
@@ -93,7 +104,7 @@ private:
 	void finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert);
 
 	// setting the sequence of function values of neighbor in same direction as on central element.
-	void set_correct_direction();
+	void set_correct_direction(int index);
 
 	// set order on the edge. Depends on if the space is given.
 	int get_max_order();
@@ -134,6 +145,8 @@ private:
 
 
 	std::vector<NeighborEdgeInfo> neighbor_edges; // vector containing all neighbor edges related to active edge
+
+	void compute_fn_values();
 
 };
 

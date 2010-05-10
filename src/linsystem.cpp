@@ -739,7 +739,7 @@ void LinSystem::assemble(bool rhsonly)
 						}*/
 						if ((lfs->area != ANY_BOUNDARY_EDGE &&lfs->area != ANY_EDGE && lfs->area != ANY_INNER_EDGE) && !wf->is_in_area(marker, lfs->area)) continue;
 						m = lfs->i;  fv = spss[m];  am = &al[m];
-						if (!nat[m]) continue;
+			//			if (!nat[m]) continue;
 						ep[edge].base = trav.get_base();
 						ep[edge].space_v = spaces[m];
 
@@ -1014,16 +1014,17 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
                     // the weights.
 }
 
-// Actual evaluation of surface linear form, just in case using informations from neighbors.
+// Actual evaluation of surface linear form, just in case using information from neighbors.
 // Used only for inner edges.
 scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {
+	// need to improve setting the order, as in other forms. 
 
   Quad2D* quad = fv->get_quad_2d();
   scalar res = 0;
   int idx_ref = rv->get_transform();
   int idx_form = fv->get_transform();
-
+	int n_ext = lf->ext.size();
 
 	Element* el;
 	el = rv->get_active_element();
@@ -1035,26 +1036,49 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	neighb = new NeighborSearch(el, mesh);
 	neighb->set_active_edge(ep->edge);
 	int n_neighbors = neighb->get_number_of_neighbs();
-	std::vector<int>* max_of_orders = neighb->get_orders();
+	
+	std::vector<int> max_of_orders(n_neighbors, -1);
+
+	std::vector<NeighborSearch*> neighbors(n_ext, NULL);
+	std::vector<std::vector<int>*> neighbors_orders(n_ext, NULL);
+	for(int i = 0; i < n_ext; i++)
+	{
+		neighbors[i] = new NeighborSearch(el, mesh, lf->ext[i], space);
+		neighbors[i]->set_active_edge(ep->edge);
+		neighbors_orders[i] = neighbors[i]->get_orders();
+	}
+
+	// find the highest order
+	int help_var;
+	for(int i = 0; i < n_neighbors; i++)
+	{
+		help_var = 0;
+		for(int j = 0; j < n_ext; j++)
+		{
+			help_var = neighbors_orders[j]->at(i);
+			if(help_var > max_of_orders[i])
+				max_of_orders[i] = help_var;
+		}
+		debug_log("maximum of orders: %d", help_var);
+	}
 
 	for(int i = 0; i < n_neighbors; i++)
 	{
-
-		int order = max_of_orders->at(i);
+		
+		int order = max_of_orders.at(i);
 	  ExtData<scalar>* ext_data = new ExtData<scalar>;
 	  Func<scalar>** ext_fn_central = new Func<scalar>*[lf->ext.size()];
 	  Func<scalar>** ext_fn_neighbor = new Func<scalar>*[lf->ext.size()];
 
 		for(int j = 0; j < lf->ext.size(); j++)
 		{
-			NeighborSearch* neighb_inner = new NeighborSearch(el, mesh, lf->ext[j], space);
-
-	    ext_fn_central[j] = neighb_inner->get_values_central(i);
-	    ext_fn_neighbor[j] = neighb_inner->get_values_neighbor(i);
-
+			neighbors[j]->set_order_of_integration(order);
+			neighbors[j]->set_solution(lf->ext[j]);
+			ext_fn_central[j] = neighbors[j]->get_values_central(i);
+	    ext_fn_neighbor[j] = neighbors[j]->get_values_neighbor(i);
 		}
 
-		if(n_neighbors > 1) //way down or active element
+		if(n_neighbors > 1) //way down
 		{
 			int* transformations = neighb->get_transformations(i);
 			int index = 0;
@@ -1070,15 +1094,13 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	  double3* pt = quad->get_points(eo);
 		int np = neighb->get_n_integ_points(i);
 
-		// init geometry and jacobian*weights
-//		  if (cache_e[eo] == NULL)
-//		  {
-		    cache_e[eo] = init_geom_surf(rv, ep, eo);
-		    double3* tan = rv->get_tangent(ep->edge, order);
-		    cache_jwt[eo] = new double[np];
-		    for(int i = 0; i < np; i++)
-		      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
-//		  }
+
+	    cache_e[eo] = init_geom_surf(rv, ep, eo);
+	    double3* tan = rv->get_tangent(ep->edge, order);
+	    cache_jwt[eo] = new double[np];
+	    for(int i = 0; i < np; i++)
+	      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+
 		  Geom<double>* e = cache_e[eo];
 		  double* jwt = cache_jwt[eo];
 
@@ -1101,7 +1123,8 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 
 	}
 
-
+	delete neighb;
+	neighbors.clear();
 	res = 0;
   return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights
                     // are defined in (-1, 1). Thus multiplying with 0.5 to correct
