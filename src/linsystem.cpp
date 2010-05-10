@@ -1011,7 +1011,6 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 			if(help_var > max_of_orders[i])
 				max_of_orders[i] = help_var;
 		}
-		debug_log("maximum of orders: %d", help_var);
 	}
 
 

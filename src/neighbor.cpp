@@ -71,14 +71,12 @@ void NeighborSearch::set_active_edge(int edge)
 
 	active_edge = edge;
 
-	debug_log("central element: %d", central_el->id);
 	if (central_el->en[active_edge]->bnd == 0)
 	{
 		neighb_el = central_el->get_neighbor(active_edge);
 		// test if on the other side of the edge is active element
 		if (neighb_el != NULL)
 		{
-			debug_log("active neighbor el: %d", neighb_el->id);
 			for (int j = 0; j < neighb_el->nvert; j++)
 			{
 				if (central_el->en[active_edge] == neighb_el->en[j])
@@ -108,13 +106,6 @@ void NeighborSearch::set_active_edge(int edge)
 					if(sol != NULL)
 					{
 						compute_fn_values();
-/*						// fill function values of central a neighbor element
-						set_fn_values(H2D_NO_TRANSF);
-
-						// test if the orientation is different,if so set same direction as on central element
-						if(local_edge_info.orientation == 1)
-							set_correct_direction();
-*/
 					}
 
 
@@ -164,8 +155,6 @@ void NeighborSearch::set_active_edge(int edge)
 				{
 						compute_fn_values();
 				}
-
-				debug_log("number of neighbors: %d ", n_neighbors);
 			}
 		}
 	}
@@ -224,7 +213,6 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 			if ((edge->elem[i] != NULL) && (edge->elem[i]->active == 1)){
 
 				//getting to correct edge
-				debug_log("way up neighbor: %d", edge->elem[i]->id);
 				neighb_el = edge->elem[i];
 				neighbor_edge = -1;
 				for(int j = 0; j < neighb_el->nvert; j++)
@@ -235,9 +223,6 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 				Node* n = NULL;
 
 				n_trans[n_neighbors] = n_road_vertices;
-				for(int k = 0 ; k < n_road_vertices; k++)
-					debug_log("vertices on the way: %d", road_vertices[k]->id);
-				debug_log("\n");
 
 				// go threw between elements and set correct transformation
 				for(int j = n_road_vertices; j > 0; j-- ){
@@ -283,16 +268,6 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 
 				direction_neighbor_edge(id_of_par_orient_1, id_of_par_orient_2, 0, &local_edge_info);
 
-
-/*				if(sol != NULL){
-					// fill function values of central a neighbor element
-					set_fn_values(H2D_WAY_UP);
-
-					// test if the orientation is different,if so set same direction as on central element
-					if(local_edge_info.orientation == 1)
-						set_correct_direction();
-				}
-*/
 				// add the local_edge_info into the vector
 				neighbor_edges.push_back(local_edge_info);
 
@@ -354,7 +329,6 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 				if (edge->elem[j] != NULL)
 					if (edge->elem[j]->active == 1){
 
-						  debug_log("way down neighbor: %d", edge->elem[j]->id);
 							neighb_el = mesh->get_element(edge->elem[j]->id);
 
 							// getting to correct edge
@@ -376,16 +350,6 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 
 							direction_neighbor_edge(parents[0], parents[1], i, &local_edge_info);
 
-/*
-							if(sol != NULL){
-								// fill function values of central and neighbors elements
-								set_fn_values(H2D_WAY_DOWN);
-
-								// test if the orientation is different,if so set same direction as on central element
-								if(local_edge_info.orientation == 1)
-									set_correct_direction();
-							}
-*/
 							// add the local_edge_info into the vector
 							neighbor_edges.push_back(local_edge_info);
 
