@@ -44,29 +44,9 @@ NeighborSearch::~NeighborSearch()
 };
 
 
-
-
-//How works the finding neighbors
-/*! \brief We will call the active  element as central element.
- *  If we have irregular mesh, there can be three options in relation of central element and neighbor element at common edge.
- *  First, the neighbor is same "size" as central, so the edge has active elements on both sides. This option is tested by function get_neighbor().
- *  Second, the neighbor is "bigger" then central. Then we to go "way up".
- *  Third, the neighbor is "smaller", we have more neighbors against the edge. This solves "way down".
-The choice between way up or way down is made by testing if we can find vertex in the middle of the edge. If we can
-then we go way down.
-
-Also at every way we fill function values of central and neighbor elements threw function set_fn_values(). Last step is
-possible change of order of neighbor's function values to correspond function values of central element at same points.
-
-We also need transform solution either on neighbor or central element to get points at correct part of the edge. We use method "push_transform"
-and use only range [0-3]. These types of transformation are common for triangles and quads and choosing right transformation can
-be derived from local numbers of edges.
-
-For numbering and ordering of edges, vertices and sons of an element look into mesh.cpp
-*/
 void NeighborSearch::set_active_edge(int edge)
 {
-	//erase all data from previous edge or element
+	// Erase all data from previous edge or element.
 	clean_all();
 
 	active_edge = edge;
@@ -74,7 +54,7 @@ void NeighborSearch::set_active_edge(int edge)
 	if (central_el->en[active_edge]->bnd == 0)
 	{
 		neighb_el = central_el->get_neighbor(active_edge);
-		// test if on the other side of the edge is active element
+		// Test if on the other side of the edge is active element.
 		if (neighb_el != NULL)
 		{
 			for (int j = 0; j < neighb_el->nvert; j++)
@@ -83,7 +63,7 @@ void NeighborSearch::set_active_edge(int edge)
 				{
 					neighbor_edge = j;
 
-					// get orientation of neighbor edge
+					// Get orientation of neighbor edge.
 					int p1 = central_el->vn[active_edge]->id;
 					int p2 = central_el->vn[(active_edge + 1) % central_el->nvert]->id;
 
@@ -92,13 +72,13 @@ void NeighborSearch::set_active_edge(int edge)
 
 					direction_neighbor_edge(p1, p2, 0, &local_edge_info);
 
-					// add the local_edge_info into the vector
+					// Add the local_edge_info into the vector.
 					neighbor_edges.push_back(local_edge_info);
 
-					// raise the number of neighbors
+					// Raise the number of neighbors.
 					n_neighbors = n_neighbors++;
 
-					// add neighbor id to neighbors_id
+					// Add neighbor id to neighbors_id.
 					neighbors_id.push_back(neighb_el->id);
 					neighbors.push_back(neighb_el);
 
@@ -107,8 +87,6 @@ void NeighborSearch::set_active_edge(int edge)
 					{
 						compute_fn_values();
 					}
-
-
 				}
 			}
 		} else
@@ -126,7 +104,7 @@ void NeighborSearch::set_active_edge(int edge)
 				parent = central_el->parent;
 
 				Node** road_vertices;
-				road_vertices = new Node*[max_n_trans];
+				road_vertices = new Node*[max_n_trans]; // array containing vertices we went through
 				int n_road_vertices = 0; // number of used vertices
 
 				for (int j = 0; j < max_n_trans; j++)
@@ -145,8 +123,8 @@ void NeighborSearch::set_active_edge(int edge)
 			{
 				// way down
 
-				int road[max_n_trans]; //array for temporal transformation
-				int n_road = 0; //number of used transformations
+				int road[max_n_trans]; // array for temporal transformation
+				int n_road = 0; // number of used transformations
 
 				finding_act_elem_down( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
 
@@ -165,26 +143,27 @@ void NeighborSearch::set_active_edge(int edge)
 
 
 //way up
-/*! \brief Function for finding "bigger" neighbor
-*If the neighbor is "bigger" then this means central element is descendant of some inactive elements. We go threw this parents and
-*stop when against an edge, which has same local number as the original edge, we have active element.
-*Important is that all sons have same orientation as parent, so local number of the edge is same.
-
-*/
+/*! \brief Function for finding "bigger" neighbor.
+ *
+ * We use recurrence in this way.
+ * If the neighbor is "bigger" then this means central element is descendant of some inactive elements. We go threw this parents and
+ * stop when against an edge, which has same local number as the original edge, we have active element.
+ * Important is that all sons have same orientation as parent, so local number of the edge is same.
+ */
 void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices)
 {
 	Node* edge = NULL;
 	Node* vertex = NULL;
-	int p1, p2; //id of parents of the edge
+	int p1, p2; // id of parents of the edge
 
-	// order parents in direction of parent element (needed for transformation of solution)
+	// Order parents in direction of parent element (needed for transformation of solution).
 	p1 = elem->vn[edge_num]->id;
 	p2 = elem->vn[(edge_num + 1) % elem->nvert]->id;
 	
 	int id_of_par_orient_1 = p1;
 	int id_of_par_orient_2 = p2;
 
-	// find if between parents p1 and p2 is active edge (is used by neighbor element)
+	// Find if between parents p1 and p2 is active edge (is used by neighbor element).
 	edge = mesh->peek_edge_node(p1, p2);
 
 	// When we are on parent, we take middle vertex on the edge and add it to road_vertices. This is for consequent transformation of solution
@@ -209,10 +188,10 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 		for (int i = 0; i < 2; i++)
 		{
 			// this condition test if on one of sides is some element and if the element is active, because it may happen that
-			// something is found even thought it's not an active element
+			// something is found even thought it's not an active element.
 			if ((edge->elem[i] != NULL) && (edge->elem[i]->active == 1)){
 
-				//getting to correct edge
+				// Getting to correct edge.
 				neighb_el = edge->elem[i];
 				neighbor_edge = -1;
 				for(int j = 0; j < neighb_el->nvert; j++)
@@ -224,7 +203,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 
 				n_trans[n_neighbors] = n_road_vertices;
 
-				// go threw between elements and set correct transformation
+				// Go between same "size" inactive parent and the central element and save correct transformation.
 				for(int j = n_road_vertices; j > 0; j-- ){
 					if(road_vertices[j] == NULL){
 							continue;
@@ -250,7 +229,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 					}
 				}
 
-				// final transformation on active element
+				// Final transformation on central element.
 				int test = 0;
 				if (orig_vertex_id[0] == road_vertices[0]->id)
 					test = 1;
@@ -268,13 +247,13 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 
 				direction_neighbor_edge(id_of_par_orient_1, id_of_par_orient_2, 0, &local_edge_info);
 
-				// add the local_edge_info into the vector
+				// Add the local_edge_info into the vector.
 				neighbor_edges.push_back(local_edge_info);
 
-				// raise the number of neighbors
+				// Raise the number of neighbors.
 				n_neighbors = n_neighbors++;
 
-				// add neighbor id to neighbors_id
+				// add neighbor id to neighbors_id.
 				neighbors_id.push_back(neighb_el->id);
 				neighbors.push_back(neighb_el);
 			}
@@ -283,7 +262,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 
 /*! \brief On active edge we have more neighbors. Gives us information from all neighbors.
  *
- *	We use recurrence in this way. In every step we take middle vertex of the edge (starting with active edge). This vertex split the edge
+ *	Again we use recurrence in this way. In every step we take middle vertex of the edge (starting with active edge). This vertex split the edge
  *	on two parts. On every part (an edge) we test if the new edge is active. If not, the middle vertex is found and the method is called
  *	again with this new vertex on this part.
  */
@@ -309,7 +288,7 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 
 		edge = mesh->peek_edge_node(son, parents[i]);
 
-		//test if edge is active, means on one of sides can!! be active element
+		// Test if edge is inactive. Means there is no active element on each side.
 		if (edge == NULL)
 		{
 			n = mesh->peek_vertex_node(son, parents[i]);
@@ -323,7 +302,7 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 				finding_act_elem_down( n, par_vertex_id, road, n_road_next, use_edge, n_vert);
 			}
 		} else
-			//test if on one of sides is active element
+			// Test if on one of sides is active element.
 			for (int j = 0; j < 2; j++)
 			{
 				if (edge->elem[j] != NULL)
@@ -331,17 +310,17 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 
 							neighb_el = mesh->get_element(edge->elem[j]->id);
 
-							// getting to correct edge
+							// Getting to correct edge,
 							neighbor_edge = -1;
 							for(int k = 0; k < neighb_el->nvert; k++)
 								if(neighb_el->en[k] == edge)
 									neighbor_edge = k;
 							if(neighbor_edge == -1) error("edge wasn't found");
 
-							// filling transformation
+							// Filling transformation.
 							for(int k = 0; k <= n_road; k++) transformations[n_neighbors][k] = road[k];
 
-							// + 1 is because how to n_road is computed it's one less then number of transformations
+							// + 1 is because how to n_road is computed it's one less then number of transformations.
 							n_trans[n_neighbors] = n_road + 1;
 
 
@@ -350,13 +329,13 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 
 							direction_neighbor_edge(parents[0], parents[1], i, &local_edge_info);
 
-							// add the local_edge_info into the vector
+							// Add the local_edge_info into the vector.
 							neighbor_edges.push_back(local_edge_info);
 
-							// raise number of neighbors
+							// Raise number of neighbors.
 							n_neighbors = n_neighbors++;
 
-							// add neighbor id to neighbors_id
+							// Add neighbor id to neighbors_id.
 							neighbors_id.push_back(neighb_el->id);
 							neighbors.push_back(neighb_el);
 					}
@@ -366,7 +345,7 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 
 /*! \brief Fill function values of central a neighbors elements
  *
- *	The flag distinguish ways and according the way it is chosen on what element are applied transformations
+ *	The flag distinguish ways and according the way it is chosen on what element are applied transformations.
  */
 
 void NeighborSearch::set_fn_values(Trans_flag flag)
@@ -397,7 +376,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 				scalar* local_fn_values_n = new scalar[number_integ_points];
 				scalar* local_fn_values_c = new scalar[number_integ_points];
 
-				// fill function values of neighbor
+				// Fill function values of neighbor.
 				sol->set_quad_order(eo);
 
 				RefMap* rm = sol->get_refmap();
@@ -409,7 +388,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 				fn_values_neighbor[n_neighbors] = local_fn_values_n;
 
 
-				//fill the central
+				// Fill the central.
 
 				sol->set_active_element(central_el);
 				eo = quad->get_edge_points(active_edge, max_order);
@@ -446,7 +425,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 			scalar* local_fn_values_c = new scalar[number_integ_points];
 			scalar* local_fn_values_n = new scalar[number_integ_points];
 
-			// fill function values of neighbor
+			// Fill function values of neighbor element.
 
 			sol->set_quad_order(eo);
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
@@ -457,11 +436,11 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 			func = init_fn(sol, rm, eo);
 			values_neighbor.push_back(func);
 
-			//fill the central
+			// Fill the central element.
 
 			sol->set_active_element(central_el);
 
-			//transform central on appropriate part
+			// Transform central element on appropriate part.
 			for(int i = 0; i < n_trans[n_neighbors]; i++){
 				sol->push_transform(transformations[n_neighbors][i]);
 			}
@@ -480,7 +459,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 			{
 			sol->set_active_element(neighb_el);
 
-			//transform neighbor on appropriate part
+			// Transform neighbor element on appropriate part.
 			for(int i = 0; i < n_trans[n_neighbors]; i++){
 				sol->push_transform(transformations[n_neighbors][i]);
 			}
@@ -503,7 +482,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 			scalar* local_fn_values_c = new scalar[number_integ_points];
 			scalar* local_fn_values_n = new scalar[number_integ_points];
 
-			// fill function values of neighbor
+			// Fill function values of neighbor element.
 
 			sol->set_quad_order(eo);
 
@@ -515,7 +494,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 			func = init_fn(sol, rm, eo);
 			values_neighbor.push_back(func);
 	
-			//fill the central
+			// Fill the central element.
 
 			sol->set_active_element(central_el);
 			eo = quad->get_edge_points(active_edge, max_order);
@@ -534,13 +513,13 @@ void NeighborSearch::set_fn_values(Trans_flag flag)
 	}
 
 
-	// test if number of function values was assigned
+	// Test if number of function values was assigned.
 	if(number_integ_points == 0)
 		error("number of integration points is 0");
 
 	np[n_neighbors] = number_integ_points;
 
-	//reset transformations
+	// Reset transformations.
 	sol->reset_transform();
 
 };
@@ -586,7 +565,7 @@ void NeighborSearch::set_correct_direction(int index)
 
 		reverse_vector(fn_values_neighbor[n_neighbors], np[n_neighbors]);
 
-		// change of the orientation for all values at local_fun, last member of the vector.
+		// change of the orientation for all values at local_fun.
 			if(local_fun->nc == 1){
 				reverse_vector(local_fun->val, np[n_neighbors]);
 				reverse_vector(local_fun->dx, np[n_neighbors]);
@@ -707,10 +686,6 @@ int NeighborSearch::get_orientation_neighb_edge(int part_edge)
 		return neighbor_edges[part_edge].orientation;
 };
 
-
-
-// methods for getting order on the edge from space. Originally taken from class Space.
-
 int NeighborSearch::get_edge_order(Element* e, int edge)
 {
   Node* en = e->en[edge];
@@ -725,7 +700,7 @@ int NeighborSearch::get_edge_order(Element* e, int edge)
 
 int NeighborSearch::get_edge_order_internal(Node* en)
 {
-  assert(en->type == TYPE_EDGE);
+  assert(en->type == H2D_TYPE_EDGE);
   Element** e = en->elem;
   int o1 = 0, o2 = 0;
   assert(e[0] != NULL || e[1] != NULL);
@@ -733,17 +708,17 @@ int NeighborSearch::get_edge_order_internal(Node* en)
   if (e[0] != NULL)
   {
     if (e[0]->is_triangle() || en == e[0]->en[0] || en == e[0]->en[2])
-      o1 = get_h_order(space->edata[e[0]->id].order);
+      o1 = H2D_GET_H_ORDER(space->edata[e[0]->id].order);
     else
-      o1 = get_v_order(space->edata[e[0]->id].order);
+      o1 = H2D_GET_V_ORDER(space->edata[e[0]->id].order);
   }
 
   if (e[1] != NULL)
   {
     if (e[1]->is_triangle() || en == e[1]->en[0] || en == e[1]->en[2])
-      o2 = get_h_order(space->edata[e[1]->id].order);
+      o2 = H2D_GET_H_ORDER(space->edata[e[1]->id].order);
     else
-      o2 = get_v_order(space->edata[e[1]->id].order);
+      o2 = H2D_GET_V_ORDER(space->edata[e[1]->id].order);
   }
 
   if (o1 == 0) return o2 == 0 ? 0 : o2;
