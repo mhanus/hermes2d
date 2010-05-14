@@ -254,7 +254,7 @@ public:
 
   void free_neighbor()
   {
-    for (int i = 0; i < nf; i++)
+    for (int i = 0; i < nf_neighbor; i++)
     {
       fn_neighbor[i]->free_fn();
       delete fn_neighbor[i];
@@ -272,6 +272,17 @@ public:
     }
     delete [] fn;
   }
+
+  void free_neighbor_ord()
+  {
+    for (int i = 0; i < nf_neighbor; i++)
+    {
+      fn_neighbor[i]->free_ord();
+      delete fn_neighbor[i];
+    }
+    delete [] fn_neighbor;
+  }
+
 
   // Used for getting neighbor function values in forms (now only in linear surface form)
   int get_nf_neighbor()

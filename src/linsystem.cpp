@@ -980,7 +980,13 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
 // Used only for inner edges.
 scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {
-	// need to improve setting the order, as in other forms. 
+	// determine the integration order
+  int inc = (fv->get_num_components() == 2) ? 1 : 0;
+  Func<Ord>* ov = init_fn_ord(fv->get_fn_order() + inc);
+
+  double fake_wt = 1.0;
+  Geom<Ord>* fake_e = init_geom_ord();
+  int order = rv->get_inv_ref_order();
 
   Quad2D* quad = fv->get_quad_2d();
   scalar res = 0;
@@ -990,7 +996,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 <<<<<<< HEAD:src/linsystem.cpp
 	if(n_ext == 0)
 	{
-		debug_log("In initialization of surface linear form weren't added any extern functions (f.e. solution from previous step)");
+		warn("In initialization of surface linear form weren't added any extern functions (f.e. solution from previous step)");
 		return 0;
 	}
 =======
@@ -1041,7 +1047,29 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	for(int i = 0; i < n_neighbors; i++)
 	{
 		
-		int order = max_of_orders.at(i);
+		ExtData<Ord>* fake_ext = new ExtData<Ord>;
+		Func<Ord>** fake_ext_fn = new Func<Ord>*[n_ext];
+		Func<Ord>** fake_ext_fn_neighbor = new Func<Ord>*[n_ext];
+		for (int j = 0; j < n_ext; j++){
+			fake_ext_fn[j] = init_fn_ord(max_of_orders[i]);
+			fake_ext_fn_neighbor[j] = init_fn_ord(max_of_orders[i]);
+		}
+		fake_ext->fn = fake_ext_fn;
+		fake_ext->set_fn_neighbor(fake_ext_fn_neighbor);
+		fake_ext->nf = n_ext;
+		fake_ext->set_nf_neighbor(n_ext);
+
+		Ord o = lf->ord(1, &fake_wt, ov, fake_e, fake_ext);
+
+		order += o.get_order();
+
+		limit_order(order);
+//		int order = max_of_orders[i];
+
+		fake_ext->free_ord();
+		fake_ext->free_neighbor_ord();
+		delete fake_ext;
+
 	  ExtData<scalar>* ext_data = new ExtData<scalar>;
 	  Func<scalar>** ext_fn_central = new Func<scalar>*[lf->ext.size()];
 	  Func<scalar>** ext_fn_neighbor = new Func<scalar>*[lf->ext.size()];
@@ -1096,6 +1124,10 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	  rv->set_transform(idx_ref);
 	  fv->set_transform(idx_form);
 	}
+
+  ov->free_ord(); delete ov;
+  delete fake_e;
+
 
 	delete neighb;
 	neighbors.clear();

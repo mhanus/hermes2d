@@ -80,14 +80,6 @@ enum Edges_flag
 };
 
 
-enum Edges_flag
-{
-	ANY_BOUNDARY_EDGE = ANY,
-	ANY_EDGE = -12345,
-	ANY_INNER_EDGE = -123456,
-};
-
-
 // how many bits the order number takes
 const int H2D_ORDER_BITS = 5;
 const int H2D_ORDER_MASK = (1 << H2D_ORDER_BITS) - 1;

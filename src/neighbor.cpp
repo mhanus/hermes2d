@@ -41,6 +41,12 @@ NeighborSearch::~NeighborSearch()
 		if(fn_values_neighbor[i] != NULL)
 			delete[] fn_values_neighbor[i];
 	}
+
+	values_central.clear();
+	values_neighbor.clear();
+	neighbor_edges.clear();
+	orders.clear();
+	neighbors.clear();
 };
 
 
