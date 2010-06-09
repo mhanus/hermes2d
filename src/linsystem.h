@@ -66,7 +66,7 @@ public:
       if (n < 0 || n >= this->wf->neq) error("Bad index of precalc shapeset.");
       return this->pss[n];
   }
-  
+
   /// Helps to determine if linear or nonlinear class instance is used
   /// similar to Java instanceof functionality
   virtual bool is_linear() { return true; }
@@ -100,32 +100,36 @@ public:
   /// (after freeing it first if it is not NULL)
   void set_vec_zero();
 
-  /// Basic procedure performing orthogonal projection for an arbitrary number of 
-  /// functions onto (the same number of) spaces determined by the LinSystem; proj_norm = 0  
-  /// for L2 norm, proj_norm = 1 for H1 norm, proj_norm = 2 for Hcurl norm. Projected can 
-  /// be any MeshFunction, Solution or Filter. The result of the projection will satisfy essential 
+  /// Basic procedure performing orthogonal projection for an arbitrary number of
+  /// functions onto (the same number of) spaces determined by the LinSystem; proj_norm = 0
+  /// for L2 norm, proj_norm = 1 for H1 norm, proj_norm = 2 for Hcurl norm. Projected can
+  /// be any MeshFunction, Solution or Filter. The result of the projection will satisfy essential
   /// boundary conditions. The projection defines the vector Vec in the class LinSystem.
-  /// All projection functionality defined here is also available in the class NonlinSystem. 
-  /// TODO: Implement projection-based interpolation (PBI) as an alternative of this. 
+  /// All projection functionality defined here is also available in the class NonlinSystem.
+  /// TODO: Implement projection-based interpolation (PBI) as an alternative of this.
   /// PBI is almost as good as global orthogonal projection but way faster.
   void project_global_n(int proj_norm, int n, ...);
 
-  /// Global orthogonal projection of MeshFunction* fn. Result of the projection is 
+  /// The same as above, but the user may specify the forms that are used in the projection
+  /// (useful e.g. when working in curvilinear coordinate systems)
+  void project_global_n(WeakForm::biform_val_t bifn, WeakForm::biform_ord_t biord, WeakForm::liform_val_t lifn, WeakForm::liform_ord_t liord, int n, ...);
+
+  /// Global orthogonal projection of MeshFunction* fn. Result of the projection is
   /// returned as "result".
   void project_global(MeshFunction* fn, Solution* result, int proj_norm = 1)
     {  project_global_n(proj_norm, 1, fn, result);  }
 
-  /// Global orthogonal projection of two functions. 
+  /// Global orthogonal projection of two functions.
   void project_global(MeshFunction* fn1, MeshFunction* fn2, Solution* result1, Solution* result2, int proj_norm = 1)
     {  project_global_n(proj_norm, 2, fn1, fn2, result1, result2);  }
 
-  /// Global orthogonal projection of three functions. 
-  void project_global(MeshFunction* fn1, MeshFunction* fn2, MeshFunction* fn3, 
+  /// Global orthogonal projection of three functions.
+  void project_global(MeshFunction* fn1, MeshFunction* fn2, MeshFunction* fn3,
                       Solution* result1, Solution* result2, Solution* result3, int proj_norm = 1)
     {  project_global_n(proj_norm, 3, fn1, fn2, fn3, result1, result2, result3);  }
 
-  /// Global orthogonal projection of four functions. 
-  void project_global(MeshFunction* fn1, MeshFunction* fn2, MeshFunction* fn3, MeshFunction* fn4, 
+  /// Global orthogonal projection of four functions.
+  void project_global(MeshFunction* fn1, MeshFunction* fn2, MeshFunction* fn3, MeshFunction* fn4,
                       Solution* result1, Solution* result2, Solution* result3, Solution* result4, int proj_norm = 1)
   {  project_global_n(proj_norm, 4, fn1, fn2, fn3, fn4, result1, result2, result3, result4);  }
 
@@ -139,7 +143,7 @@ public:
   }
 
   /// Global orthogonal projection of two exact functions.
-  void project_global(scalar (*exactfn1)(double x, double y, scalar& dx, scalar& dy), 
+  void project_global(scalar (*exactfn1)(double x, double y, scalar& dx, scalar& dy),
                       scalar (*exactfn2)(double x, double y, scalar& dx, scalar& dy),
                       Solution* result1, Solution* result2, int proj_norm = 1)
   {
@@ -151,7 +155,7 @@ public:
   }
 
   /// Global orthogonal projection of three exact functions.
-  void project_global(scalar (*exactfn1)(double x, double y, scalar& dx, scalar& dy), 
+  void project_global(scalar (*exactfn1)(double x, double y, scalar& dx, scalar& dy),
                       scalar (*exactfn2)(double x, double y, scalar& dx, scalar& dy),
                       scalar (*exactfn3)(double x, double y, scalar& dx, scalar& dy),
                       Solution* result1, Solution* result2, Solution* result3, int proj_norm = 1)
@@ -165,8 +169,8 @@ public:
     project_global_n(proj_norm, 3, result1, result2, result3, result1, result2, result3);
   }
 
-  /// Projection-based interpolation of an exact function. This is faster than the 
-  /// global projection since no global matrix problem is solved. 
+  /// Projection-based interpolation of an exact function. This is faster than the
+  /// global projection since no global matrix problem is solved.
   void project_local(scalar (*exactfn)(double x, double y, scalar& dx, scalar& dy),
               Mesh* mesh, Solution* result, int proj_norm = 1)
   {

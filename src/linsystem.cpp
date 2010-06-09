@@ -31,7 +31,7 @@ void qsort_int(int* pbase, size_t total_elems); // defined in qsort.cpp
 
 //// interface /////////////////////////////////////////////////////////////////////////////////////
 
-void LinSystem::init(WeakForm* wf_, Solver* solver_) 
+void LinSystem::init(WeakForm* wf_, Solver* solver_)
 {
   this->wf = wf_;
   this->solver = solver_;
@@ -59,7 +59,7 @@ void LinSystem::init(WeakForm* wf_, Solver* solver_)
   this->want_dir_contrib = true;
 }
 
-// this is needed because of a constructor in NonlinSystem 
+// this is needed because of a constructor in NonlinSystem
 LinSystem::LinSystem() {}
 
 LinSystem::LinSystem(WeakForm* wf, Solver* solver)
@@ -146,7 +146,7 @@ LinSystem::LinSystem(WeakForm* wf, int n, ...)
 LinSystem::~LinSystem()
 {
   free();
-  /* FIXME SOON - this is a memory leak. Uncommenting 
+  /* FIXME SOON - this is a memory leak. Uncommenting
      this was causing a double-free segfault. */
   //free_meshes_and_spaces();
   if (this->sp_seq != NULL) delete [] this->sp_seq;
@@ -189,7 +189,7 @@ void LinSystem::free_meshes_and_spaces()
     }
     //meshes = NULL;
   }
-} 
+}
 
 // Should not be called by the user.
 void LinSystem::init_spaces(int n, ...)
@@ -1220,6 +1220,45 @@ void LinSystem::project_global_n(int proj_norm, int n, ...)
     }
   }
   if (!found) error("Wrong projection type in project_global_n().");
+
+  want_dir_contrib = true;
+  LinSystem::assemble();
+  LinSystem::solve(n, result[0], result[1], result[2], result[3], result[4],
+                      result[5], result[6], result[7], result[8], result[9]);
+  want_dir_contrib = false;
+
+  wf = wf_orig;
+  wf_seq = -1;
+}
+
+void LinSystem::project_global_n(WeakForm::biform_val_t bifn, WeakForm::biform_ord_t biord, WeakForm::liform_val_t lifn, WeakForm::liform_ord_t liord, int n, ...)
+{
+  if (!have_spaces)
+    error("You have to init_spaces() before using project_global_n().");
+  if (n != wf->neq || n > 10)
+    error("Wrong number of functions in project_global_n().");
+
+  int i;
+  MeshFunction* fn[10];
+  Solution* result[10];
+
+  va_list ap;
+  va_start(ap, n);
+  for (i = 0; i < n; i++)
+    fn[i] = va_arg(ap, MeshFunction*);
+  for (i = 0; i < n; i++)
+    result[i] = va_arg(ap, Solution*);
+  va_end(ap);
+
+  WeakForm* wf_orig = wf;
+
+  WeakForm wf_proj(n);
+  wf = &wf_proj;
+  for (i = 0; i < n; i++)
+  {
+      wf->add_biform(i, i, bifn, biord);
+      wf->add_liform(i, lifn, liord, H2D_ANY, 1, fn[i]);
+  }
 
   want_dir_contrib = true;
   LinSystem::assemble();
