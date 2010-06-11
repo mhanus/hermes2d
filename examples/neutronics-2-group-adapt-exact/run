@@ -1,0 +1,21 @@
+./neutronics-2-group-adapt-exact
+
+if [ ! -d "res/$1" ]; then
+	mkdir "res/$1"
+fi
+
+mv *.bmp "res/$1"
+mv results.txt "res/$1"
+
+gnuplot conv_dof.gp
+gnuplot conv_cpu.gp
+gnuplot dof_evol.gp
+
+mv conv_dof.gp "res/$1"
+mv conv_cpu.gp "res/$1"
+mv dof_evol.gp "res/$1"
+
+mv conv_dof.tikz "res/$1"
+mv conv_cpu.tikz "res/$1"
+mv dof_evol.tikz "res/$1"
+
