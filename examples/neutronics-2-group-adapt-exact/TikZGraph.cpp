@@ -74,6 +74,7 @@ void TikZGraph::save(const char* filename)
   if (title.length()) fprintf(f, "set title '%s'\n", title.c_str());
   if (xname.length()) fprintf(f, "set xlabel '%s'\n", xname.c_str());
   if (yname.length()) fprintf(f, "set ylabel '%s'\n", yname.c_str());
+  if (legend && legend_pos.length()) fprintf(f, "set key '%s'\n", legend_pos.c_str());
 
   fprintf(f, "plot");
   for (unsigned int i = 0; i < rows.size(); i++)
@@ -82,12 +83,17 @@ void TikZGraph::save(const char* filename)
     get_style_types(rows[i].line, rows[i].marker, rows[i].color, lt, pt, ct);
 
     if (lt == 0)
-      fprintf(f, " '-' w p pointtype %d title '%s' ", pt, rows[i].name.c_str());
+      fprintf(f, " '-' w p pointtype %d", pt);
     else if (ct < 0)
-      fprintf(f, " '-' w lp linewidth %g linetype %d pointtype %d title '%s' ", this->plw, lt, pt, rows[i].name.c_str());
+      fprintf(f, " '-' w lp linewidth %g linetype %d pointtype %d", this->plw, lt, pt);
     else
-      fprintf(f, " '-' w lp linewidth %g linecolor %d linetype %d pointtype %d title '%s' ", this->plw, ct, lt, pt, rows[i].name.c_str());
+      fprintf(f, " '-' w lp linewidth %g linecolor %d linetype %d pointtype %d", this->plw, ct, lt, pt);
 
+		if (legend)
+			fprintf(f, " title '%s' ", rows[i].name.c_str());
+		else
+			fprintf(f, " notitle ", rows[i].name.c_str());
+			
     if (i < rows.size() - 1) fprintf(f, ", ");
   }
   fprintf(f,"\n");
