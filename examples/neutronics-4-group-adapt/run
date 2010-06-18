@@ -1,3 +1,61 @@
-rm *~ 
+#!/bin/bash
+
 ./neutronics-4-group-adapt
-python plot_graph.py &
+
+if [ ! -d "res" ]; then
+	mkdir "res"
+fi
+if [ ! -d "res/$1" ]; then
+	mkdir "res/$1"
+fi
+
+for bmp in *.bmp ; do                      
+		echo converting "$bmp" ...                 
+    png="${bmp%.bmp}-transparent.png"                    
+    if convert "$bmp" -transparent white tmp.png ; then
+        mv tmp.png "$png"                
+    else                                    
+        echo 'error in converting to transparent png' 1>&2
+        exit 1
+    fi                                       
+    png="${bmp%.bmp}.png"                    
+    if convert "$bmp" tmp.png ; then
+        mv tmp.png "$png"                
+    else                                    
+        echo 'error in converting to png' 1>&2
+        exit 1
+    fi
+done                                         
+echo all conversions successful, removing bitmaps              
+rm *.bmp 
+
+echo PNGing convergence graphs
+gnuplot conv_dof.gp
+gnuplot conv_cpu.gp
+gnuplot dof_evol.gp
+
+echo    ... making transparent versions
+if convert conv_dof.png -transparent white tmp.png ; then
+    mv tmp.png conv_dof-transparent.png                
+else                                    
+    echo 'error in converting to transparent png' 1>&2
+    exit 1
+fi  
+if convert conv_cpu.png -transparent white tmp.png ; then
+    mv tmp.png conv_cpu-transparent.png                
+else                                    
+    echo 'error in converting to transparent png' 1>&2
+    exit 1
+fi  
+if convert dof_evol.png -transparent white tmp.png ; then
+    mv tmp.png dof_evol-transparent.png                
+else                                    
+    echo 'error in converting to transparent png' 1>&2
+    exit 1
+fi  
+
+
+echo Moving results to "res/$1"
+
+mv *.gp "res/$1"
+mv *.png "res/$1"
