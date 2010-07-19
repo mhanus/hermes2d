@@ -55,16 +55,13 @@ public:
 
 };
 
-void init_matrix_solver(MatrixSolverType matrix_solver, int ndof, 
-                        Matrix* &mat, Vector* &vec, CommonSolver* &solver, bool is_complex = false);
-
 bool solve_linear(Tuple<Space *> spaces, WeakForm* wf, Tuple<Solution *> solutions, 
                   MatrixSolverType matrix_solver, bool is_complex = false);
 
 // Solve a typical linear problem (without automatic adaptivity).
 // Feel free to adjust this function for more advanced applications.
-bool solve_linear_adapt(Tuple<Space *> spaces, WeakForm* wf, Tuple<Solution *> solutions, 
-                        MatrixSolverType matrix_solver, Tuple<int> proj_norms, 
+bool solve_linear_adapt(Tuple<Space *> spaces, WeakForm* wf, Tuple<Solution *> slns, 
+                        MatrixSolverType matrix_solver, Tuple<Solution *> ref_slns, Tuple<int> proj_norms, 
                         RefinementSelectors::Selector* selector, AdaptivityParamType* apt,
                         Tuple<WinGeom *> sln_win_geom = Tuple<WinGeom *>(), 
                         Tuple<WinGeom *> mesh_win_geom = Tuple<WinGeom *>(), 
