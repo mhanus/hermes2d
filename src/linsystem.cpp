@@ -23,6 +23,7 @@
 #include "refmap.h"
 #include "solution.h"
 #include "config.h"
+#include "neighbor.h"
 #include "limit_order.h"
 #include <algorithm>
 #include "python_solvers.h"
@@ -574,6 +575,8 @@ void LinSystem::assemble(bool rhsonly)
        // assemble surface integrals now: loop through boundary edges of the element
       for (unsigned int edge = 0; edge < e0->nvert; edge++)
       {
+
+//        if (!bnd[edge]) continue;
         marker = ep[edge].marker;
         // obtain the list of shape functions which are nonzero on this edge
         for (unsigned int i = 0; i < s->idx.size(); i++) {
@@ -667,6 +670,7 @@ void LinSystem::assemble(bool rhsonly)
 							{
 								if ((k = am->dof[i]) < 0) continue;
 								fv->set_active_shape(am->idx[i]);
+
 								for (int j = 0; j < an->cnt; j++)
 								{
 									fu->set_active_shape(an->idx[j]);
@@ -983,11 +987,14 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
   int idx_ref = rv->get_transform();
   int idx_form = fv->get_transform();
 	int n_ext = lf->ext.size();
+<<<<<<< HEAD:src/linsystem.cpp
 	if(n_ext == 0)
 	{
 		debug_log("In initialization of surface linear form weren't added any extern functions (f.e. solution from previous step)");
 		return 0;
 	}
+=======
+>>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 
 	Element* el;
 	el = rv->get_active_element();
@@ -995,6 +1002,10 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	NeighborSearch* neighb;
 	Space* space = ep->space_v;
 
+<<<<<<< HEAD:src/linsystem.cpp
+=======
+
+>>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 	neighb = new NeighborSearch(el, mesh);
 	neighb->set_active_edge(ep->edge);
 	int n_neighbors = neighb->get_number_of_neighbs();
@@ -1021,6 +1032,10 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 			if(help_var > max_of_orders[i])
 				max_of_orders[i] = help_var;
 		}
+<<<<<<< HEAD:src/linsystem.cpp
+=======
+		debug_log("maximum of orders: %d", help_var);
+>>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 	}
 
 	for(int i = 0; i < n_neighbors; i++)
