@@ -14,6 +14,8 @@
 // along with Hermes2D.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "forms.h"
+#include "views/view.h"
+#include "views/scalar_view.h"
 
 // Integration order for coordinates, normals and tangents is one
 Geom<Ord>* init_geom_ord()
@@ -197,13 +199,25 @@ Func<double>* init_fn(PrecalcShapeset *fu, RefMap *rm, const int order)
 // Preparation of mesh-functions
 Func<scalar>* init_fn(MeshFunction *fu, RefMap *rm, const int order)
 {
-  int nc = fu->get_num_components();
+// Solution* pvis = static_cast<Solution*>(fu);
   Quad2D* quad = fu->get_quad_2d();
+//  info("init_fn, get_quad_2d_std: %p, %d", quad, quad->get_mode());
+//  Solution vis;
+//  info("init_fn, ref_map_pss: %d", ref_map_pss.mode);
+/*  ScalarView view("Preparation of mesh-functions", 1300, 0, 640, 640 );
+  view.set_3d_mode();
+*/
+  int nc = fu->get_num_components();
+  //Quad2D* quad = fu->get_quad_2d();
   fu->set_quad_order(order);
   double3* pt = quad->get_points(order);
   int np = quad->get_num_points(order);
   Func<scalar>* u = new Func<scalar>(np, nc);
-
+/*
+  vis.copy(pvis);
+  view.show(&vis);
+  View::wait();
+*/
   if (u->nc == 1)
   {
     u->val = new scalar [np];

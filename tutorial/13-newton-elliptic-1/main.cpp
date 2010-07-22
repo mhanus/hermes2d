@@ -55,7 +55,7 @@ Real heat_src(Real x, Real y)
   return 1.0;
 }
 
-// Initial condition. It will be projected on the FE mesh 
+// Initial condition. It will be projected on the FE mesh
 // to obtain initial coefficient vector for the Newton's method.
 scalar init_cond(double x, double y, double& dx, double& dy)
 {
@@ -75,8 +75,8 @@ int main(int argc, char* argv[])
   mloader.load("square.mesh", &mesh);
 
   // Initial mesh refinements.
-  for(int i = 0; i < INIT_GLOB_REF_NUM; i++) mesh.refine_all_elements();
-  mesh.refine_towards_boundary(1,INIT_BDY_REF_NUM);
+  for(int i = 0; i < 1 /*INIT_GLOB_REF_NUM*/; i++) mesh.refine_all_elements();
+//  mesh.refine_towards_boundary(1,INIT_BDY_REF_NUM);
 
   // Create an H1 space with default shapeset.
   H1Space space(&mesh, bc_types, essential_bc_values, P_INIT);
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
   bool verbose = true; // Default is false.
   Solution* init_sln = new Solution();
   init_sln->set_exact(&mesh, init_cond);
-  if (!solve_newton(&space, &wf, init_sln, &u_prev, SOLVER_UMFPACK, H2D_H1_NORM, 
+  if (!solve_newton(&space, &wf, init_sln, &u_prev, SOLVER_UMFPACK, H2D_H1_NORM,
                     NEWTON_TOL, NEWTON_MAX_ITER, verbose)) error("Newton's method did not converge.");
 
   // Visualise the solution and mesh.

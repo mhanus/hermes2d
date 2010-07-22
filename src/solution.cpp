@@ -173,9 +173,10 @@ Solution::Solution()
   num_dofs = -1;
 
   set_quad_2d(&g_quad_2d_std);
+  info("solution: %p, %d", this->get_quad_2d(), this->get_quad_2d()->get_mode());
 }
 
-Solution::Solution(Mesh *mesh) : MeshFunction(mesh) 
+Solution::Solution(Mesh *mesh) : MeshFunction(mesh)
 {
   memset(tables, 0, sizeof(tables));
   memset(elems,  0, sizeof(elems));
@@ -197,7 +198,7 @@ Solution::Solution(Mesh *mesh) : MeshFunction(mesh)
   set_quad_2d(&g_quad_2d_std);
 }
 
-Solution::Solution(Space* s, Vector* vec) : MeshFunction(mesh) 
+Solution::Solution(Space* s, Vector* vec) : MeshFunction(mesh)
 {
   memset(tables, 0, sizeof(tables));
   memset(elems,  0, sizeof(elems));
@@ -393,7 +394,7 @@ void Solution::set_fe_solution(Space* space, Vector* vec, double dir)
     if (space->get_shapeset() == NULL) error("Space->shapeset == NULL in Solution::set_fe_solution().");
     PrecalcShapeset *pss = new PrecalcShapeset(shapeset);
     if (pss == NULL) error("PrecalcShapeset could not be allocated in Solution::set_fe_solution().");
-    
+
     this-> set_fe_solution(space, pss, vec, dir);
 }
 

@@ -97,7 +97,7 @@ protected:
 
 class Vector {
 public:
-    virtual void init(int n, bool is_complex=false) = 0; 
+    virtual void init(int n, bool is_complex=false) = 0;
     Vector() {};
     virtual ~Vector() {};
     inline virtual int get_size() { return this->size; }
@@ -240,7 +240,7 @@ public:
     {
         return this->v_cplx;
     }
-private:
+public:
     double *v;
     cplx *v_cplx;
 };

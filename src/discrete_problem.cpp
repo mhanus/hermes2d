@@ -28,6 +28,9 @@
 
 #include "solvers.h"
 
+#include "views/view.h"
+#include "views/scalar_view.h"
+
 int H2D_DEFAULT_PROJ_NORM = 1;
 
 void qsort_int(int* pbase, size_t total_elems); // defined in qsort.cpp
@@ -185,7 +188,7 @@ void DiscreteProblem::insert_block(Matrix *mat_ext, scalar** mat, int* iidx, int
     mat_ext->add_block(iidx, ilen, jidx, jlen, mat);
 }
 
-void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ext, 
+void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ext,
                                Vector* rhs_ext, bool rhsonly, bool is_complex)
 {
   // sanity checks
@@ -207,10 +210,10 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
     }
   }
 
-  // Assign dof in all spaces. 
-  // Realloc mat_ext, dir_ext and rhs_ext if ndof changed, 
-  // and clear dir_ext and rhs_ext. 
-  //Do not touch the matrix if rhsonly == true. 
+  // Assign dof in all spaces.
+  // Realloc mat_ext, dir_ext and rhs_ext if ndof changed,
+  // and clear dir_ext and rhs_ext.
+  //Do not touch the matrix if rhsonly == true.
   int ndof = this->assign_dofs();
   //printf("ndof = %d\n", ndof);
   if (ndof == 0) error("ndof = 0 in DiscreteProblem::assemble().");
@@ -231,13 +234,24 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
     rhs_ext->init(ndof);
   }
   else rhs_ext->set_zero();
-  
+
   // If init_vec != NULL, convert it to a Tuple of solutions u_ext.
   Tuple<Solution*> u_ext;
   for (int i = 0; i < wf->neq; i++) {
     if (init_vec != NULL) {
       u_ext.push_back(new Solution(spaces[i]->get_mesh()));
       u_ext[i]->set_fe_solution(spaces[i], this->pss[i], init_vec);
+/*
+
+      Solution vis;
+      vis.copy(u_ext[i]);
+      ScalarView view("In assemble", 1300, 0, 640, 640 );
+      view.set_3d_mode(true);
+      view.show(&vis);
+      View::wait();
+*/
+
+
     }
     else u_ext.push_back(NULL);
   }
@@ -315,11 +329,15 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
         if (e[i] == NULL) { isempty[j] = true; continue; }
         // FIXME: Do not retrieve assembly list again if the element has not changed.
         spaces[j]->get_element_assembly_list(e[i], &al[j]);
-
         spss[j]->set_active_element(e[i]);
         spss[j]->set_master_transform();
         refmap[j].set_active_element(e[i]);
         refmap[j].force_transform(pss[j]->get_transform(), pss[j]->get_ctm());
+
+        if (u_ext[j] != NULL) {
+          u_ext[j]->set_active_element(e[i]);
+          u_ext[j]->force_transform(pss[j]->get_transform(), pss[j]->get_ctm());
+        }
       }
       marker = e0->marker;
 
@@ -346,13 +364,13 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
           {
             for (int j = 0; j < an->cnt; j++) {
               fu->set_active_shape(an->idx[j]);
-              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions 
+              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions
               // should be passed there.
               if (an->dof[j] < 0) {
                 if (dir_ext != NULL) {
                   scalar val = eval_form(mfv, u_ext, fu, fv, &refmap[n], &refmap[m]) * an->coef[j] * am->coef[i];
                   dir_ext->add(am->dof[i], val);
-                } 
+                }
               }
               else if (rhsonly == false) {
                 scalar val = eval_form(mfv, u_ext, fu, fv, &refmap[n], &refmap[m]) * an->coef[j] * am->coef[i];
@@ -365,14 +383,14 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
             for (int j = 0; j < an->cnt; j++) {
               if (j < i && an->dof[j] >= 0) continue;
               fu->set_active_shape(an->idx[j]);
-              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions 
+              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions
               // should be passed there.
               if (an->dof[j] < 0) {
                 if (dir_ext != NULL) {
                   scalar val = eval_form(mfv, u_ext, fu, fv, &refmap[n], &refmap[m]) * an->coef[j] * am->coef[i];
                   dir_ext->add(am->dof[i], val);
                 }
-              } 
+              }
               else if (rhsonly == false) {
                 scalar val = eval_form(mfv, u_ext, fu, fv, &refmap[n], &refmap[m]) * an->coef[j] * am->coef[i];
                 local_stiffness_matrix[i][j] = local_stiffness_matrix[j][i] = val;
@@ -420,9 +438,10 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
         {
           if (am->dof[i] < 0) continue;
           fv->set_active_shape(am->idx[i]);
-          // FIXME - the NULL on the following line is temporary, an array of solutions 
+          // FIXME - the NULL on the following line is temporary, an array of solutions
           // should be passed there.
           scalar val = eval_form(vfv, u_ext, fv, &refmap[m]) * am->coef[i];
+          info("%f", val);
           rhs_ext->add(am->dof[i], val);
         }
       }
@@ -464,20 +483,20 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
             for (int j = 0; j < an->cnt; j++)
             {
               fu->set_active_shape(an->idx[j]);
-              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions 
+              // FIXME - the NULL on the following eval_forms is temporary, an array of solutions
               // should be passed there.
               if (an->dof[j] < 0) {
                 if (dir_ext != NULL) {
-                  scalar val = eval_form(mfs, u_ext, fu, fv, &refmap[n], &refmap[m], &(ep[edge])) 
+                  scalar val = eval_form(mfs, u_ext, fu, fv, &refmap[n], &refmap[m], &(ep[edge]))
                                * an->coef[j] * am->coef[i];
                   dir_ext->add(am->dof[i], val);
                 }
               }
               else if (rhsonly == false) {
-                scalar val = eval_form(mfs, u_ext, fu, fv, &refmap[n], &refmap[m], &(ep[edge])) 
+                scalar val = eval_form(mfs, u_ext, fu, fv, &refmap[n], &refmap[m], &(ep[edge]))
                              * an->coef[j] * am->coef[i];
                 local_stiffness_matrix[i][j] = val;
-              } 
+              }
             }
           }
           if (rhsonly == false) {
@@ -501,7 +520,7 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
           {
             if (am->dof[i] < 0) continue;
             fv->set_active_shape(am->idx[i]);
-            // FIXME - the NULL on the following line is temporary, an array of solutions 
+            // FIXME - the NULL on the following line is temporary, an array of solutions
             // should be passed there.
             scalar val = eval_form(vfs, u_ext, fv, &refmap[m], &(ep[edge])) * am->coef[i];
             rhs_ext->add(am->dof[i], val);
@@ -590,7 +609,7 @@ void DiscreteProblem::delete_cache()
 //// evaluation of forms, general case ///////////////////////////////////////////////////////////
 
 // Actual evaluation of volume Jacobian form (calculates integral)
-scalar DiscreteProblem::eval_form(WeakForm::MatrixFormVol *mfv, Tuple<Solution *> sln, 
+scalar DiscreteProblem::eval_form(WeakForm::MatrixFormVol *mfv, Tuple<Solution *> sln,
                         PrecalcShapeset *fu, PrecalcShapeset *fv, RefMap *ru, RefMap *rv)
 {
   // determine the integration order
@@ -618,7 +637,7 @@ scalar DiscreteProblem::eval_form(WeakForm::MatrixFormVol *mfv, Tuple<Solution *
   order += o.get_order();
   limit_order_nowarn(order);
 
-  for (int i = 0; i < wf->neq; i++) {  
+  for (int i = 0; i < wf->neq; i++) {
     if (oi[i] != NULL) { oi[i]->free_ord(); delete oi[i]; }
   }
   if (ou != NULL) {
@@ -666,8 +685,8 @@ scalar DiscreteProblem::eval_form(WeakForm::MatrixFormVol *mfv, Tuple<Solution *
 
   scalar res = mfv->fn(np, jwt, prev, u, v, e, ext);
 
-  for (int i = 0; i < wf->neq; i++) {  
-    if (prev[i] != NULL) prev[i]->free_fn(); delete prev[i]; 
+  for (int i = 0; i < wf->neq; i++) {
+    if (prev[i] != NULL) prev[i]->free_fn(); delete prev[i];
   }
   if (ext != NULL) {ext->free(); delete ext;}
   return res;
@@ -700,9 +719,9 @@ scalar DiscreteProblem::eval_form(WeakForm::VectorFormVol *vfv, Tuple<Solution *
   order += o.get_order();
   limit_order_nowarn(order);
 
-  for (int i = 0; i < wf->neq; i++) { 
+  for (int i = 0; i < wf->neq; i++) {
     if (oi[i] != NULL) {
-      oi[i]->free_ord(); delete oi[i]; 
+      oi[i]->free_ord(); delete oi[i];
     }
   }
   if (ov != NULL) {ov->free_ord(); delete ov;}
@@ -744,9 +763,9 @@ scalar DiscreteProblem::eval_form(WeakForm::VectorFormVol *vfv, Tuple<Solution *
 
   scalar res = vfv->fn(np, jwt, prev, v, e, ext);
 
-  for (int i = 0; i < wf->neq; i++) { 
+  for (int i = 0; i < wf->neq; i++) {
     if (prev[i] != NULL) {
-      prev[i]->free_fn(); delete prev[i]; 
+      prev[i]->free_fn(); delete prev[i];
     }
   }
   if (ext != NULL) {ext->free(); delete ext;}
@@ -755,7 +774,7 @@ scalar DiscreteProblem::eval_form(WeakForm::VectorFormVol *vfv, Tuple<Solution *
 }
 
 // Actual evaluation of surface Jacobian form (calculates integral)
-scalar DiscreteProblem::eval_form(WeakForm::MatrixFormSurf *mfs, Tuple<Solution *> sln, 
+scalar DiscreteProblem::eval_form(WeakForm::MatrixFormSurf *mfs, Tuple<Solution *> sln,
                         PrecalcShapeset *fu, PrecalcShapeset *fv, RefMap *ru, RefMap *rv, EdgePos* ep)
 {
   // eval the form
@@ -796,9 +815,9 @@ scalar DiscreteProblem::eval_form(WeakForm::MatrixFormSurf *mfs, Tuple<Solution 
 
   scalar res = mfs->fn(np, jwt, prev, u, v, e, ext);
 
-  for (int i = 0; i < wf->neq; i++) { 
+  for (int i = 0; i < wf->neq; i++) {
     if (prev[i] != NULL) {
-      prev[i]->free_fn(); delete prev[i]; 
+      prev[i]->free_fn(); delete prev[i];
     }
   }
   if (ext != NULL) {ext->free(); delete ext;}
@@ -809,7 +828,7 @@ scalar DiscreteProblem::eval_form(WeakForm::MatrixFormSurf *mfs, Tuple<Solution 
 
 
 // Actual evaluation of surface vector form (calculates integral)
-scalar DiscreteProblem::eval_form(WeakForm::VectorFormSurf *vfs, Tuple<Solution *> sln, 
+scalar DiscreteProblem::eval_form(WeakForm::VectorFormSurf *vfs, Tuple<Solution *> sln,
                         PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {
   // eval the form
@@ -849,7 +868,7 @@ scalar DiscreteProblem::eval_form(WeakForm::VectorFormSurf *vfs, Tuple<Solution 
 
   scalar res = vfs->fn(np, jwt, prev, v, e, ext);
 
-  for (int i = 0; i < wf->neq; i++) {  
+  for (int i = 0; i < wf->neq; i++) {
     if (prev[i] != NULL) {prev[i]->free_fn(); delete prev[i]; }
   }
   if (ext != NULL) {ext->free(); delete ext;}
@@ -862,7 +881,7 @@ scalar DiscreteProblem::eval_form(WeakForm::VectorFormSurf *vfs, Tuple<Solution 
 
 //// solve /////////////////////////////////////////////////////////////////////////////////////////
 
-bool DiscreteProblem::solve_matrix_problem(Matrix* mat, Vector* vec) 
+bool DiscreteProblem::solve_matrix_problem(Matrix* mat, Vector* vec)
 {
   // check matrix size
   int ndof = this->get_num_dofs();
@@ -902,7 +921,7 @@ bool DiscreteProblem::solve(Matrix* mat, Vector* rhs, Vector* vec)
   bool flag = this->solve_matrix_problem(mat, delta);
   if (flag == false) return false;
 
-  // add the result which is in "delta" to the previous 
+  // add the result which is in "delta" to the previous
   // solution vector which is in "vec"
   for (int i = 0; i < ndof; i++) vec->add(i, delta->get_c_array()[i]);
   delete delta;
@@ -912,7 +931,7 @@ bool DiscreteProblem::solve(Matrix* mat, Vector* rhs, Vector* vec)
 
 // L2 projections
 template<typename Real, typename Scalar>
-Scalar L2projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, 
+Scalar L2projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
@@ -922,7 +941,7 @@ Scalar L2projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> 
 }
 
 template<typename Real, typename Scalar>
-Scalar L2projection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, 
+Scalar L2projection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v,
                            Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
@@ -933,7 +952,7 @@ Scalar L2projection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> 
 
 // H1 projections
 template<typename Real, typename Scalar>
-Scalar H1projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, 
+Scalar H1projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
                            Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
@@ -943,19 +962,19 @@ Scalar H1projection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> 
 }
 
 template<typename Real, typename Scalar>
-Scalar H1projection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, 
+Scalar H1projection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v,
                            Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
   for (int i = 0; i < n; i++)
-    result += wt[i] * (ext->fn[0]->val[i] * v->val[i] + ext->fn[0]->dx[i] * 
+    result += wt[i] * (ext->fn[0]->val[i] * v->val[i] + ext->fn[0]->dx[i] *
                        v->dx[i] + ext->fn[0]->dy[i] * v->dy[i]);
   return result;
 }
 
 // Hcurl projections
 template<typename Real, typename Scalar>
-Scalar Hcurlprojection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u, 
+Scalar Hcurlprojection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *u,
                               Func<Real> *v, Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
@@ -967,7 +986,7 @@ Scalar Hcurlprojection_biform(int n, double *wt, Func<Scalar> *u_ext[], Func<Rea
 }
 
 template<typename Real, typename Scalar>
-Scalar Hcurlprojection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, 
+Scalar Hcurlprojection_liform(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v,
                               Geom<Real> *e, ExtData<Scalar> *ext)
 {
   Scalar result = 0;
@@ -997,7 +1016,7 @@ int DiscreteProblem::assign_dofs()
 }
 
 // global orthogonal projection
-void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source, 
+void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source,
                     Tuple<Solution*> target, WeakForm *wf, Vector* vec, bool is_complex)
 {
   int n = source.size();
@@ -1016,13 +1035,13 @@ void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source,
   CooMatrix mat(ndof, is_complex);
   CommonSolverSciPyUmfpack solver;
   Vector* dir = new AVector(ndof, is_complex);
-  
-  // See whether the user wants the resulting coefficient vector.  
+
+  // See whether the user wants the resulting coefficient vector.
   Vector* rhs;
   if (vec == NULL) rhs = new AVector(ndof, is_complex);
   else rhs = vec;
 
-  //assembling the projection matrix, dir vector and rhs  
+  //assembling the projection matrix, dir vector and rhs
   DiscreteProblem dp(wf, spaces);
   bool rhsonly = false;
   dp.assemble(NULL, &mat, dir, rhs, rhsonly, is_complex);
@@ -1032,18 +1051,18 @@ void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source,
   // Calculate the Newton coefficient vector.
   solver.solve(&mat, rhs);
 
-  // See whether the user wants the projection resualts as solutions. 
+  // See whether the user wants the projection results as solutions.
   for (int i=0; i < wf->neq; i++) {
     if (target[i] != NULL) target[i]->set_fe_solution(spaces[i], rhs);
   }
 }
 
 // global orthogonal projection
-void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source, 
-                    Tuple<Solution*> target, Tuple<int>proj_norms, 
+void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source,
+                    Tuple<Solution*> target, Tuple<int>proj_norms,
                     Vector* vec, bool is_complex)
 {
-  int n = spaces.size();  
+  int n = spaces.size();
 
   // define temporary projection weak form
   WeakForm wf(n);
@@ -1083,7 +1102,7 @@ void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source,
 }
 
 void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source, Tuple<Solution*> target,
-		    matrix_forms_tuple_t proj_biforms, vector_forms_tuple_t proj_liforms, 
+		    matrix_forms_tuple_t proj_biforms, vector_forms_tuple_t proj_liforms,
                     Vector* vec, bool is_complex)
 {
   int n = spaces.size();
@@ -1120,7 +1139,7 @@ void project_global(Tuple<Space *> spaces, Tuple<MeshFunction*> source, Tuple<So
 }
 
 /// Global orthogonal projection of one scalar ExactFunction.
-void project_global(Space *space, ExactFunction source, Solution* target, int proj_norm, Vector* vec, 
+void project_global(Space *space, ExactFunction source, Solution* target, int proj_norm, Vector* vec,
                     bool is_complex)
 {
   if (proj_norm != 0 && proj_norm != 1) error("Wrong norm used in orthogonal projection (scalar case).");
@@ -1142,7 +1161,7 @@ void project_global(Space *space, ExactFunction source, Solution* target,
   if (mesh == NULL) error("Mesh is NULL in project_global().");
   Solution sln;
   sln.set_exact(mesh, source);
-  project_global(space, &sln, target, matrix_forms_tuple_t(proj_biform), vector_forms_tuple_t(proj_liform), 
+  project_global(space, &sln, target, matrix_forms_tuple_t(proj_biform), vector_forms_tuple_t(proj_liform),
                  vec, is_complex);
 };
 
@@ -1195,12 +1214,12 @@ void DiscreteProblem::update_essential_bc_values()
   for (int i=0; i<n; i++) this->spaces[i]->update_essential_bc_values();
 }
 
-// FIXME: We need to unify the type for Python and 
+// FIXME: We need to unify the type for Python and
 // C++ solvers. Right now Solver and CommonSolver
 // are incompatible.
-void init_matrix_solver(MatrixSolverType matrix_solver, int ndof, 
-                        Matrix* &mat, Vector* &rhs, 
-                        CommonSolver* &solver, bool is_complex) 
+void init_matrix_solver(MatrixSolverType matrix_solver, int ndof,
+                        Matrix* &mat, Vector* &rhs,
+                        CommonSolver* &solver, bool is_complex)
 {
   // Initialize stiffness matrix, load vector, and matrix solver.
   // UMFpack.
@@ -1214,21 +1233,21 @@ void init_matrix_solver(MatrixSolverType matrix_solver, int ndof,
   PetscVector rhs_petsc(ndof);
   PetscLinearSolver solver_petsc;
   */
-  // MUMPS. 
+  // MUMPS.
   // FIXME - PETSc solver needs to be ported from H3D.
   /*
   MumpsMatrix mat_mumps(ndof);
   MumpsVector rhs_mumps(ndof);
   MumpsSolver solver_mumps;
   */
-  
+
   switch (matrix_solver) {
-    case SOLVER_UMFPACK: 
+    case SOLVER_UMFPACK:
       mat = mat_umfpack;
       rhs = rhs_umfpack;
       solver = solver_umfpack;
       break;
-    case SOLVER_PETSC:  
+    case SOLVER_PETSC:
       error("Petsc solver not implemented yet.");
       /*
       mat = &mat_petsc;
@@ -1236,7 +1255,7 @@ void init_matrix_solver(MatrixSolverType matrix_solver, int ndof,
       solver = &solver_petsc;
       */
       break;
-    case SOLVER_MUMPS:  
+    case SOLVER_MUMPS:
       error("MUMPS solver not implemented yet.");
       /*
       mat = &mat_mumps;
@@ -1248,7 +1267,7 @@ void init_matrix_solver(MatrixSolverType matrix_solver, int ndof,
   }
 }
 
-double get_l2_norm(Vector* vec) 
+double get_l2_norm(Vector* vec)
 {
   double val = 0;
   for (int i = 0; i < vec->get_size(); i++) val += vec->get(i)*vec->get(i);
@@ -1256,7 +1275,7 @@ double get_l2_norm(Vector* vec)
   return val;
 }
 
-double get_l2_norm_cplx(Vector* vec) 
+double get_l2_norm_cplx(Vector* vec)
 {
   double val = 0;
   for (int i = 0; i < vec->get_size(); i++) val += vec->get(i)*conj(vec->get(i));
@@ -1265,18 +1284,18 @@ double get_l2_norm_cplx(Vector* vec)
 }
 
 // Solve a typical nonlinear problem (without automatic adaptivity)
-// using the Newton's method. 
+// using the Newton's method.
 // Feel free to adjust this function for more advanced applications.
-bool solve_newton(Tuple<Space *> spaces, WeakForm* wf, 
-                  Tuple<MeshFunction *> init_cond, Tuple<Solution *> u_prev, 
-                  MatrixSolverType matrix_solver, Tuple<int>proj_norms, double newton_tol, 
-                  int newton_max_iter, bool verbose, Tuple<MeshFunction*> mesh_fns, 
-                  bool is_complex) 
+bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
+                  Tuple<MeshFunction *> init_cond, Tuple<Solution *> u_prev,
+                  MatrixSolverType matrix_solver, Tuple<int>proj_norms, double newton_tol,
+                  int newton_max_iter, bool verbose, Tuple<MeshFunction*> mesh_fns,
+                  bool is_complex)
 {
   // sanity checks
   int n = u_prev.size();
-  if (n != wf->neq) 
-    error("The number of solutions in newton_solve() must match the number of equation in the PDE system.");
+  if (n != wf->neq)
+    error("The number of solutions in newton_solve() must match the number of equations in the PDE system.");
   for (int i=0; i < n; i++) {
     if (spaces[i] == NULL) error("spaces[%d] is NULL in solve_newton().", i);
   }
@@ -1289,9 +1308,9 @@ bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
 
   // Project the function init_cond() on the FE space
   // to obtain initial coefficient vector for the Newton's method.
-  if (verbose) info("Projecting initial condition to obtain initial vector for the Newton'w method.");
+  if (verbose) info("Projecting initial condition to obtain initial vector for the Newton's method.");
   Vector* init_vec = new AVector(get_num_dofs(spaces));
-  project_global(spaces, init_cond, u_prev, proj_norms, init_vec, is_complex);  
+  project_global(spaces, init_cond, u_prev, proj_norms, init_vec, is_complex);
 
   // Initialize the discrete problem.
   DiscreteProblem dp(wf, spaces);
@@ -1305,7 +1324,7 @@ bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
   double res_l2_norm;
   do
   {
-    if (verbose == true) info("---- Newton iter %d:", it); 
+    if (verbose == true) info("---- Newton iter %d:", it);
 
     // reinitialize filters
     for (int i=0; i < n_mesh_fns; i++) mesh_fns[i]->reinit();
@@ -1317,7 +1336,7 @@ bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
     // Calculate the l2-norm of residual vector
     if (!is_complex) res_l2_norm = get_l2_norm(rhs);
     else res_l2_norm = get_l2_norm_cplx(rhs);
-    if (verbose) printf("---- Newton iter %d, ndof %d, res. l2 norm %g\n", 
+    if (verbose) printf("---- Newton iter %d, ndof %d, res. l2 norm %g\n",
                         it, get_num_dofs(spaces), res_l2_norm);
 
     // If l2 norm of the residual vector is in tolerance, quit.
@@ -1325,6 +1344,9 @@ bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
 
     // Solve the matrix problem.
     if (!solver->solve(mat, rhs)) error ("Matrix solver failed.\n");
+
+    init_vec->set_zero();
+    memcpy((double *)dynamic_cast<AVector*>(init_vec)->v, (double *)dynamic_cast<AVector*>(rhs)->v, rhs->get_size()*sizeof(double));
 
     // Convert coefficient vector into a Solution.
     for (int i=0; i<u_prev.size(); i++) {
