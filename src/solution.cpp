@@ -173,7 +173,6 @@ Solution::Solution()
   num_dofs = -1;
 
   set_quad_2d(&g_quad_2d_std);
-  info("solution: %p, %d", this->get_quad_2d(), this->get_quad_2d()->get_mode());
 }
 
 Solution::Solution(Mesh *mesh) : MeshFunction(mesh)

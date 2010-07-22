@@ -5,5 +5,3 @@ project(newton-elliptic-1)
 
 add_executable(${PROJECT_NAME} main.cpp)
 include (../CMake.common)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS -g)

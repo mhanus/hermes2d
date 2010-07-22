@@ -29,9 +29,6 @@
 
 #include "solvers.h"
 
-#include "views/view.h"
-#include "views/scalar_view.h"
-
 int H2D_DEFAULT_PROJ_NORM = 1;
 
 void qsort_int(int* pbase, size_t total_elems); // defined in qsort.cpp
@@ -242,17 +239,6 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
     if (init_vec != NULL) {
       u_ext.push_back(new Solution(spaces[i]->get_mesh()));
       u_ext[i]->set_fe_solution(spaces[i], this->pss[i], init_vec);
-
-/*
-      Solution vis;
-      vis.copy(u_ext[i]);
-      ScalarView view("In assemble", 1300, 0, 640, 640 );
-      view.set_3d_mode(true);
-      view.show(&vis);
-      View::wait();
-*/
-
-
     }
     else {
       u_ext.push_back(NULL);
@@ -444,7 +430,6 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
           // FIXME - the NULL on the following line is temporary, an array of solutions
           // should be passed there.
           scalar val = eval_form(vfv, u_ext, fv, &refmap[m]) * am->coef[i];
-          info("%f", val);
           rhs_ext->add(am->dof[i], val);
         }
       }
@@ -1350,8 +1335,7 @@ bool solve_newton(Tuple<Space *> spaces, WeakForm* wf,
     for (int i = 0; i < rhs->get_size(); i++) rhs->set(i, -rhs->get(i));
     if (!solver->solve(mat, rhs)) error ("Matrix solver failed.\n");
 
-    // copy the solution vector stored in "rhs" to "init_vec"
-    //init_vec->set_zero();
+    // Add the solution vector stored in "rhs" to "init_vec".
     for (int i = 0; i < init_vec->get_size(); i++) init_vec->add(i, rhs->get(i));
 
     it++;

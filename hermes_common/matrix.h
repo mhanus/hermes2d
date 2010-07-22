@@ -240,7 +240,7 @@ public:
     {
         return this->v_cplx;
     }
-public:
+private:
     double *v;
     cplx *v_cplx;
 };

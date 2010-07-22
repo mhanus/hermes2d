@@ -61,7 +61,7 @@ void PrecalcShapeset::set_quad_2d(Quad2D* quad_2d)
   //((master_pss != NULL) ? master_pss : this)->set_quad_2d(quad_2d);
   RealFunction::set_quad_2d(quad_2d);
 
-  mode = 1;
+  mode = 0;
   set_active_shape(0); // FIXME: this depends a lot on the order of calling
                        // set_quad_2d, set_active_element, set_active_shape.
                        // This is because segfaults in push_transform called right
