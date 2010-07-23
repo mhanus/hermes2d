@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 	mloader.load("domain.mesh", &mesh);
 
 	// perform refinement to get complex mesh
-	mesh.refine_element(0, 1);
+	/*mesh.refine_element(0, 1);
 	mesh.refine_element(2);
 	mesh.refine_element(3, 1);
 	mesh.refine_element(7, 2);
@@ -24,18 +24,18 @@ int main(int argc, char* argv[])
 	mesh.refine_element(17);
 	mesh.refine_element(24);
 	mesh.refine_element(28);
-
+*/
   // display the mesh
-	MeshView mview("neighbors_test", 100, 100, 500, 500);
-	mview.show(&mesh);
+//	MeshView mview("neighbors_test", 100, 100, 500, 500);
+//	mview.show(&mesh);
   // wait for keyboard or mouse input
-  View::wait();
+//  View::wait();
 
 	Element* e = NULL;
 	NeighborSearch* neighb = NULL;
 	std::vector<int>* neighbors_id;
 	std::map<int, std::vector<int> > all_neighbors;
-	std::map<int, std::vector<int> >::iterator it; 
+	std::map<int, std::vector<int> >::iterator it;
 
 	// for every element we save all its neighbors into "all_neighhbors".
 	// For every neighbor, his id is compared with already inserted elements into all_neighbors. If is found then

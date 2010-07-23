@@ -228,7 +228,7 @@ private:
 	/*! Fill function values of central and neighbor element.
    * \param[in] flag Flag by which we decide on what element will be applicated transformations.
    */
-	void set_fn_values(Trans_flag flag);
+	void set_fn_values(Trans_flag flag, int i);
 
 	//! Vector containing all neighbor edges information corresponding to active edge.
 	std::vector<NeighborEdgeInfo> neighbor_edges;

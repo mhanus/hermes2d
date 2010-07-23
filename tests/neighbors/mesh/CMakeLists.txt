@@ -5,3 +5,5 @@ include (../../CMake.common)
 
 set(BIN ${PROJECT_BINARY_DIR}/${PROJECT_NAME})
 add_test(neighbors-1 ${BIN})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS -g)
