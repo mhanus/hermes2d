@@ -59,9 +59,14 @@ Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData
 */
 
 // boundary conditions
-int bc_types(int marker)
+BCType bc_types(int marker)
 {
    return BC_NONE;
+}
+// function values for Dirichlet boundary conditions.
+scalar essential_bc_values(int ess_bdy_marker, double x, double y)
+{
+  return 0;
 }
 
 int main(int argc, char* argv[])
@@ -88,45 +93,41 @@ int main(int argc, char* argv[])
 //   MeshView mview("Mesh ", 100, 100, 500, 500);
 //   mview.show(&mesh);
 
-  // initialize the shapeset and the cache
-  H1Shapeset shapeset;
-  PrecalcShapeset pss(&shapeset);
-
-  // create the H1 space
-  H1Space space(&mesh, &shapeset);
-  space.set_bc_types(bc_types);
+ // Create an H1 space.
+ const int P_INIT = 1;
+  H1Space space(&mesh, bc_types, NULL, P_INIT);
 
   // set uniform polynomial degrees
 //	 space.set_uniform_order(P_INIT);
   Element* e = NULL;
   int order = 1;
 	 for_all_active_elements(e, &mesh){
-		 space.set_element_order(e->id, order);
+	   if ( e->is_quad() )
+      space.set_element_order(e->id, H2D_MAKE_QUAD_ORDER(order, order));
+     else
+      space.set_element_order(e->id, order);
 		 order = order < 9 ? order + 1 : 1;
 	 }
 
 	// enumerate basis functions
-  space.assign_dofs();
   Solution sln;
   Solution xprev;
   xprev.set_zero(&mesh);
   // matrix solver
   UmfpackSolver umfpack;
 
-  // initialize the weak formulation
-  WeakForm wf(1);
-  wf.add_biform(0, 0, callback(bilinear_form));
-  wf.add_liform(0, callback(linear_form));
+  // Initialize the weak formulation.
+  WeakForm wf;
+  wf.add_matrix_form(callback(bilinear_form));
+  wf.add_vector_form(callback(linear_form));
 /*
   wf.add_liform_surf(0, callback(linear_form_surf), ANY_INNER_EDGE, 1, &xprev);
 */
 
   // assemble and solve the finite element problem
-  LinSystem sys(&wf, &umfpack);
-  sys.set_spaces(1, &space);
-  sys.set_pss(1, &pss);
+  LinSystem sys(&wf, &umfpack, &space);
   sys.assemble();
-  sys.solve(1, &sln);
+  sys.solve(&sln);
 
   // visualize the solution
   // ScalarView view1("Solution 1");

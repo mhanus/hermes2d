@@ -418,7 +418,7 @@ void LinSystem::assemble(bool rhsonly)
 
   if (!rhsonly) free_matrix();
   int k, m, marker;
-  std::vector<AsmList> al(wf->neq);
+  AUTOLA_CL(AsmList, al, wf->neq);
   AsmList* am, * an;
   bool bnd[4];
   std::vector<bool> nat(wf->neq), isempty(wf->neq);
@@ -617,7 +617,7 @@ void LinSystem::assemble(bool rhsonly)
 								for (int j = 0; j < an->cnt; j++)
 								{
 									fu->set_active_shape(an->idx[j]);
-									bi = eval_form(bfs, fu, fv, refmap+n, refmap+m, ep+edge) * an->coef[j] * am->coef[i];
+									bi = eval_form(bfs, fu, fv, &refmap[n], &refmap[m], ep+edge) * an->coef[j] * am->coef[i];
 									if (an->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
 
 								}
@@ -640,7 +640,7 @@ void LinSystem::assemble(bool rhsonly)
 						{
 							if (am->dof[i] < 0) continue;
 							fv->set_active_shape(am->idx[i]);
-							RHS[am->dof[i]] += eval_form(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+							RHS[am->dof[i]] += eval_form(lfs, fv, &refmap[m], ep+edge) * am->coef[i];
 						}
 					}
         }
@@ -674,7 +674,7 @@ void LinSystem::assemble(bool rhsonly)
 								for (int j = 0; j < an->cnt; j++)
 								{
 									fu->set_active_shape(an->idx[j]);
-									bi = eval_form(bfs, fu, fv, refmap+n, refmap+m, ep+edge) * an->coef[j] * am->coef[i];
+									bi = eval_form(bfs, fu, fv, &refmap[n], &refmap[m], ep+edge) * an->coef[j] * am->coef[i];
 									if (an->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
 									}
 								}
@@ -705,7 +705,7 @@ void LinSystem::assemble(bool rhsonly)
 							{
 								if (am->dof[i] < 0) continue;
 								fv->set_active_shape(am->idx[i]);
-								RHS[am->dof[i]] += eval_form(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+								RHS[am->dof[i]] += eval_form(lfs, fv, &refmap[m], ep+edge) * am->coef[i];
 							}
 						}
 						// here the form will use for evaluation information from neighbors
@@ -715,7 +715,7 @@ void LinSystem::assemble(bool rhsonly)
 							{
 								if (am->dof[i] < 0) continue;
 								fv->set_active_shape(am->idx[i]);
-								RHS[am->dof[i]] += eval_form_neighbor(lfs, fv, refmap+m, ep+edge) * am->coef[i];
+								RHS[am->dof[i]] += eval_form_neighbor(lfs, fv, &refmap[m], ep+edge) * am->coef[i];
 							}
 						}
 						else
@@ -993,14 +993,12 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
   int idx_ref = rv->get_transform();
   int idx_form = fv->get_transform();
 	int n_ext = lf->ext.size();
-<<<<<<< HEAD:src/linsystem.cpp
+
 	if(n_ext == 0)
 	{
 		warn("In initialization of surface linear form weren't added any extern functions (f.e. solution from previous step)");
 		return 0;
 	}
-=======
->>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 
 	Element* el;
 	el = rv->get_active_element();
@@ -1008,10 +1006,6 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	NeighborSearch* neighb;
 	Space* space = ep->space_v;
 
-<<<<<<< HEAD:src/linsystem.cpp
-=======
-
->>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 	neighb = new NeighborSearch(el, mesh);
 	neighb->set_active_edge(ep->edge);
 	int n_neighbors = neighb->get_number_of_neighbs();
@@ -1038,10 +1032,8 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 			if(help_var > max_of_orders[i])
 				max_of_orders[i] = help_var;
 		}
-<<<<<<< HEAD:src/linsystem.cpp
-=======
+
 		debug_log("maximum of orders: %d", help_var);
->>>>>>> 742a14748ba2585fa7467853ae5d48bb9182200c:src/linsystem.cpp
 	}
 
 	for(int i = 0; i < n_neighbors; i++)

@@ -50,29 +50,9 @@ NeighborSearch::~NeighborSearch()
 };
 
 
-
-
-//How works the finding neighbors
-/*! \brief We will call the active  element as central element.
- *  If we have irregular mesh, there can be three options in relation of central element and neighbor element at common edge.
- *  First, the neighbor is same "size" as central, so the edge has active elements on both sides. This option is tested by function get_neighbor().
- *  Second, the neighbor is "bigger" then central. Then we to go "way up".
- *  Third, the neighbor is "smaller", we have more neighbors against the edge. This solves "way down".
-The choice between way up or way down is made by testing if we can find vertex in the middle of the edge. If we can
-then we go way down.
-
-Also at every way we fill function values of central and neighbor elements threw function set_fn_values(). Last step is
-possible change of order of neighbor's function values to correspond function values of central element at same points.
-
-We also need transform solution either on neighbor or central element to get points at correct part of the edge. We use method "push_transform"
-and use only range [0-3]. These types of transformation are common for triangles and quads and choosing right transformation can
-be derived from local numbers of edges.
-
-For numbering and ordering of edges, vertices and sons of an element look into mesh.cpp
-*/
 void NeighborSearch::set_active_edge(int edge)
 {
-	//erase all data from previous edge or element
+	// Erase all data from previous edge or element.
 	clean_all();
 
 	active_edge = edge;
@@ -81,7 +61,7 @@ void NeighborSearch::set_active_edge(int edge)
 	if (central_el->en[active_edge]->bnd == 0)
 	{
 		neighb_el = central_el->get_neighbor(active_edge);
-		// test if on the other side of the edge is active element
+		// Test if on the other side of the edge is active element.
 		if (neighb_el != NULL)
 		{
 			debug_log("active neighbor el: %d", neighb_el->id);
@@ -296,11 +276,6 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int edge_num, int* orig
 						set_correct_direction();
 				}
 */
-				// add the local_edge_info into the vector
-				neighbor_edges.push_back(local_edge_info);
-
-				// raise the number of neighbors
-				n_neighbors = n_neighbors++;
 
 				// add neighbor id to neighbors_id
 				neighbors_id.push_back(neighb_el->id);
@@ -360,7 +335,6 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 							neighb_el = mesh->get_element(edge->elem[j]->id);
 
 						  debug_log("way down neighbor: %d", edge->elem[j]->id);
-							neighb_el = mesh->get_element(edge->elem[j]->id);
 
 							// Getting to correct edge.
 							neighbor_edge = -1;

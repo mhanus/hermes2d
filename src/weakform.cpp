@@ -71,7 +71,7 @@ void WeakForm::add_matrix_form(int i, int j, biform_val_t fn, biform_ord_t ord, 
   BiFormVol form = { i, j, sym, area, fn, ord };
   if (ext.size() != 0) {
     //printf("ext.size() = %d\n", ext.size());
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   bfvol.push_back(form);
@@ -95,7 +95,7 @@ void WeakForm::add_matrix_form(biform_val_t fn, biform_ord_t ord, SymFlag sym, i
 
   BiFormVol form = { i, j, sym, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   bfvol.push_back(form);
@@ -111,7 +111,7 @@ void WeakForm::add_matrix_form_surf(int i, int j, biform_val_t fn, biform_ord_t 
 
   BiFormSurf form = { i, j, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   bfsurf.push_back(form);
@@ -124,12 +124,12 @@ void WeakForm::add_matrix_form_surf(biform_val_t fn, biform_ord_t ord, int area,
   int i = 0, j = 0;
 
   // FIXME: the code below should be replaced with a call to the full function.
-  if (area != H2D_ANY && area < 0 && -area > (int)areas.size())
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   BiFormSurf form = { i, j, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   bfsurf.push_back(form);
@@ -145,7 +145,7 @@ void WeakForm::add_vector_form(int i, liform_val_t fn, liform_ord_t ord, int are
 
   LiFormVol form(i, area, fn, ord);
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfvol.push_back(form);
@@ -163,7 +163,7 @@ void WeakForm::add_vector_form(liform_val_t fn, liform_ord_t ord, int area, Tupl
 
   LiFormVol form(i, area, fn, ord);
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfvol.push_back(form);
@@ -179,7 +179,7 @@ void WeakForm::add_vector_form(int i, liform_val_extended_t fn_ext, liform_ord_e
 
   LiFormVol form(i, area, fn_ext, ord_ext);
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfvol.push_back(form);
@@ -197,7 +197,7 @@ void WeakForm::add_vector_form(liform_val_extended_t fn_ext, liform_ord_extended
 
   LiFormVol form(i, area, fn_ext, ord_ext);
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfvol.push_back(form);
@@ -213,7 +213,7 @@ void WeakForm::add_vector_form_surf(int i, liform_val_t fn, liform_ord_t ord, in
 
   LiFormSurf form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfsurf.push_back(form);
@@ -226,12 +226,12 @@ void WeakForm::add_vector_form_surf(liform_val_t fn, liform_ord_t ord, int area,
   int i = 0;
 
   // FIXME: the code below should be replaced with a call to the full function.
-  if (area != H2D_ANY && area < 0 && -area > (int)areas.size())
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   LiFormSurf form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   lfsurf.push_back(form);
@@ -253,7 +253,7 @@ void WeakForm::add_jacform(int i, int j, jacform_val_t fn, jacform_ord_t ord, Sy
 
   JacFormVol form = { i, j, sym, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   jfvol.push_back(form);
@@ -277,7 +277,7 @@ void WeakForm::add_jacform(jacform_val_t fn, jacform_ord_t ord, SymFlag sym, int
 
   JacFormVol form = { i, j, sym, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   jfvol.push_back(form);
@@ -288,12 +288,12 @@ void WeakForm::add_jacform_surf(int i, int j, jacform_val_t fn, jacform_ord_t or
 {
   if (i < 0 || i >= neq || j < 0 || j >= neq)
     error("Invalid equation number.");
-  if (area != H2D_ANY && area < 0 && -area > areas.size())
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   JacFormSurf form = { i, j, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   jfsurf.push_back(form);
@@ -305,13 +305,13 @@ void WeakForm::add_jacform_surf(jacform_val_t fn, jacform_ord_t ord, int area, T
 {
   int i = 0, j = 0;
 
-  // FIXME: the code below should be replaced with a call to the full function. 
-  if (area != H2D_ANY && area < 0 && -area > areas.size())
+  // FIXME: the code below should be replaced with a call to the full function.
+  if (area != H2D_ANY && area!= H2D_ANY_EDGE && area!= H2D_ANY_INNER_EDGE && area < 0 && -area > (int)areas.size())
     error("Invalid area number.");
 
   JacFormSurf form = { i, j, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   jfsurf.push_back(form);
@@ -327,7 +327,7 @@ void WeakForm::add_resform(int i, resform_val_t fn, resform_ord_t ord, int area,
 
   ResFormVol form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   rfvol.push_back(form);
@@ -339,13 +339,13 @@ void WeakForm::add_resform(resform_val_t fn, resform_ord_t ord, int area, Tuple<
 {
   int i = 0;
 
-  // FIXME: the code below should be replaced with a call to the full function. 
+  // FIXME: the code below should be replaced with a call to the full function.
   if (area != H2D_ANY && area < 0 && -area > areas.size())
     error("Invalid area number.");
 
   ResFormVol form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   rfvol.push_back(form);
@@ -361,7 +361,7 @@ void WeakForm::add_resform_surf(int i, resform_val_t fn, resform_ord_t ord, int 
 
   ResFormSurf form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   rfsurf.push_back(form);
@@ -373,13 +373,13 @@ void WeakForm::add_resform_surf(resform_val_t fn, resform_ord_t ord, int area, T
 {
   int i = 0;
 
-  // FIXME: the code below should be replaced with a call to the full function. 
+  // FIXME: the code below should be replaced with a call to the full function.
   if (area != H2D_ANY && area < 0 && -area > areas.size())
     error("Invalid area number.");
 
   ResFormSurf form = { i, area, fn, ord };
   if (ext.size() != 0) {
-    int nx = ext.size(); 
+    int nx = ext.size();
     for (int i = 0; i < nx; i++) form.ext.push_back(ext[i]);
   }
   rfsurf.push_back(form);

@@ -49,19 +49,32 @@ Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData
 }
 
 // boundary conditions
-int bc_types(int marker)
+BCType bc_types(int marker)
 {
    return BC_NONE;
+}
+// function values for Dirichlet boundary conditions.
+scalar essential_bc_values(int ess_bdy_marker, double x, double y)
+{
+  return 0;
 }
 
 int main(int argc, char* argv[])
 {
-  if (argc < 2) error("Missing mesh file name parameter.");
+  char *f;
+  char *def_f = "square.mesh";
+
+  if (argc < 2) {
+    info("Using square.mesh for the meshfile.");
+    f = def_f;
+  }  else {
+    f = argv[1];
+  }
 
   // load the mesh
   Mesh mesh;
   H2DReader mloader;
-  mloader.load(argv[1], &mesh);
+  mloader.load(f, &mesh);
 
   // uniform mesh refinements
   for (int i=0; i<INIT_REF_NUM; i++) mesh.refine_all_elements();
@@ -74,20 +87,11 @@ int main(int argc, char* argv[])
 	 mview.show(&mesh);
   // wait for keyboard or mouse input
    View::wait("Waiting for keyboard or mouse input.");
-
-
-  // initialize the shapeset and the cache
-  L2Shapeset shapeset;
-  PrecalcShapeset pss(&shapeset);
+*/
   // create the L2 space
-  L2Space space(&mesh, &shapeset);
+  L2Space space(&mesh,3);
   space.set_bc_types(bc_types);
 
-  // set uniform polynomial degrees
-  space.set_uniform_order(P_INIT);
-
-  // enumerate basis functions
-  int ndof = assign_dofs(&space);
 
  /// BaseView bview;
 //  bview.show(&space);
@@ -100,18 +104,16 @@ int main(int argc, char* argv[])
   UmfpackSolver umfpack;
 
   // initialize the weak formulation
-  WeakForm wf(1);
-  wf.add_biform(0, 0, callback(bilinear_form));
-  wf.add_liform(0, callback(linear_form));
+    WeakForm wf;
+  wf.add_matrix_form(callback(bilinear_form));
+  wf.add_vector_form(callback(linear_form));
   // if you want to work in linear surface form with values from neighbors use flag H2D_ANY_INNER_EDGE.
-  wf.add_liform_surf(0, callback(linear_form_surf), H2D_ANY_INNER_EDGE, 1, &xprev);
+  wf.add_vector_form_surf(callback(linear_form_surf), H2D_ANY_INNER_EDGE, Tuple<MeshFunction* >(&xprev));
 
   // assemble and solve the finite element problem
-  LinSystem sys(&wf, &umfpack);
-  sys.set_spaces(1, &space);
-  sys.set_pss(1, &pss);
+  LinSystem sys(&wf, &umfpack, &space);
   sys.assemble();
-  sys.solve(1, &sln);
+  sys.solve(&sln);
 
   // visualize the solution
   ScalarView view1("Solution");
