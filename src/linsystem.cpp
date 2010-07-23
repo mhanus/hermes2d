@@ -16,6 +16,7 @@
 #include "common.h"
 #include "linsystem.h"
 #include "solver.h"
+#include "solvers.h"
 #include "traverse.h"
 #include "space.h"
 #include "precalc.h"

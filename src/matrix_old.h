@@ -153,7 +153,7 @@ void chsgn(T** matrix, int m, int n)
 /// pivoting; d is output as +-1 depending on whether the number of row interchanges was even
 /// or odd, respectively. This routine is used in combination with lubksb to solve linear equations
 /// or invert a matrix.
-extern H2D_API void ludcmp(double** a, int n, int* indx, double* d);
+void ludcmp(double** a, int n, int* indx, double* d);
 
 /// Solves the set of n linear equations AX = B. Here a[n][n] is input, not as the matrix
 /// A but rather as its LU decomposition, determined by the routine ludcmp. indx[n] is input

@@ -778,7 +778,7 @@ scalar* Projection::project()
   memcpy(vec, sln_vec, ndofs * sizeof(scalar));
   return vec;
   */
-
+	return new double(1.1);
 }
 
 

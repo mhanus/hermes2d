@@ -19,6 +19,7 @@
 #include "nonlinsystem.h"
 #include "weakform.h"
 #include "solver.h"
+#include "solvers.h"
 #include "space.h"
 #include "precalc.h"
 #include "refmap.h"

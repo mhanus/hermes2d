@@ -18,7 +18,7 @@
 
 #define TINY 1e-20
 
-
+/*
 void ludcmp(double** a, int n, int* indx, double* d)
 {
   int i, imax = 0, j, k;
@@ -102,7 +102,7 @@ void choldc(double **a, int n, double p[])
     }
   }
 }
-
+*/
 
 // SparseMatrix ////////////////////////////////////////////////////////////////////////////////////
 

@@ -14,9 +14,17 @@ typedef ::std::complex<double> __pyx_t_double_complex;
 
 extern PyObject *(*c2numpy_int)(int *, int);
 extern PyObject *(*c2numpy_double)(double *, int);
-extern PyObject *(*c2py_CooMatrix)(struct CooMatrix *);
-extern PyObject *(*c2py_CSRMatrix)(struct CSRMatrix *);
-extern PyObject *(*c2py_CSCMatrix)(struct CSCMatrix *);
+
+#ifdef _MSC_VER   //Microsoft compilers do not compile this with struct
+extern PyObject *(*c2py_CooMatrix)(class CooMatrix *);
+extern PyObject *(*c2py_CSRMatrix)(class CSRMatrix *);
+extern PyObject *(*c2py_CSCMatrix)(class CSCMatrix *);
+#else
+PyObject *(*c2py_CooMatrix)(struct CooMatrix *);
+PyObject *(*c2py_CSRMatrix)(struct CSRMatrix *);
+PyObject *(*c2py_CSCMatrix)(struct CSCMatrix *);
+#endif
+
 extern PyObject *(*namespace_create)(void);
 extern void (*namespace_push)(PyObject *, const char*, PyObject *);
 extern void (*namespace_print)(PyObject *);

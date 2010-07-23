@@ -18,20 +18,28 @@ Python::Python(int argc, char* argv[])
 void Python::_init(int argc, char* argv[])
 {
     python_count++;
-    if (python_count == 1) {
-        char *PYTHONPATH = getenv("PYTHONPATH");
-        // (If PYTHONPATH is not defined, it will be NULL)
-        int max_len = 10000;
-        char new_path[max_len];
-        // This is a hack, so that we can load hermes_common below. Some better
-        // mechanism should be used instead, once we figure out how to do it:
-        int nchars = snprintf(new_path, max_len, "PYTHONPATH=.:../..:../../../python:../hermes_common/:../../hermes_common/:%s", PYTHONPATH);
-        if (nchars >= max_len)
-            _error("internal error in hermes_common: PYTHONPATH too long.");
-        // We have to make a copy of the string, because new_path[] will get
-        // deallocated:
-        putenv(strdup(new_path));
-        Py_Initialize();
+    if (python_count == 1) 
+		{   
+				#ifndef _MSC_VER  // For MS Visual Studio this is not necessary
+					// (If PYTHONPATH is not defined, it will be NULL)
+					// This is a hack, so that we can load hermes_common below. Some better
+					// mechanism should be used instead, once we figure out how to do it:
+					const int max_len = 10000;
+					char new_path[max_len];
+        	char *PYTHONPATH_ = getenv("PYTHONPATH");
+					#ifdef WIN32	//Windows use semicolons as delimiters between paths listed in the environment variables
+						int nchars = snprintf(new_path, max_len, "PYTHONPATH=.;../..;../../../python;../hermes_common/;../../hermes_common/;%s", PYTHONPATH_);
+					#else					//Other systems use colons
+					int nchars = snprintf(new_path, max_len, "PYTHONPATH=.:../..:../../../python:../hermes_common/:../../hermes_common/:%s", PYTHONPATH_);
+					#endif
+						if (nchars >= max_len)
+						_error("internal error in hermes_common: PYTHONPATH too long.");
+					// We have to make a copy of the string, because new_path[] will get
+					// deallocated:
+				  putenv(strdup(new_path));
+				#endif
+        
+				Py_Initialize();
         if (argc >= 0)
             PySys_SetArgv(argc, argv);
         if (import__hermes_common())

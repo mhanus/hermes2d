@@ -190,9 +190,9 @@ protected:
   bool do_zoom_to_fit; ///< true to automatically translate the view so that the whole model si displayed
 
   // Perspective projection parameters.
-  static const int fovy = 50;        ///< Field of view in the vertical direction (in degrees).
-  static const double znear = 0.05;  ///< Distance of the near clipping plane of the viewing frustum from the camera.
-  static const double zfar = 10;     ///< Distance of the Far clipping plane of the viewing frustum from the camera.
+  static const int fovy;        ///< Field of view in the vertical direction (in degrees).
+  static const double znear;  ///< Distance of the near clipping plane of the viewing frustum from the camera.
+  static const double zfar;     ///< Distance of the Far clipping plane of the viewing frustum from the camera.
 
   bool pmode, mode3d, panning;
   double xrot, yrot, xtrans, ytrans, ztrans;

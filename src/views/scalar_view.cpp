@@ -38,6 +38,11 @@ using namespace std;
 
 //// ScalarView ////////////////////////////////////////////////////////////////////////////////////
 
+const int ScalarView::fovy = 50;        ///< Field of view in the vertical direction (in degrees).
+const double ScalarView::znear = 0.05;  ///< Distance of the near clipping plane of the viewing frustum from the camera.
+const double ScalarView::zfar = 10;     ///< Distance of the Far clipping plane of the viewing frustum from the camera.
+
+
 ScalarView::ScalarView(const char* title, int x, int y, int width, int height)
            : View(title, x, y, width, height)
            , show_element_info(false), element_id_widget(0)

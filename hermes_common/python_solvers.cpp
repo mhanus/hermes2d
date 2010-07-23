@@ -4,11 +4,15 @@
 // Email: hermes1d@googlegroups.com, home page: http://hpfem.org/
 
 #include "matrix.h"
+#include "solvers.h"
 
+#ifdef COMMON_WITH_SCIPY
 #include "python_api.h"
 
-void solve_linear_system_numpy(Matrix *mat, double *res)
+bool CommonSolverNumPy::solve(Matrix *mat, double *res)
 {
+  //printf("NumPy solver\n");
+
     CSRMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSRMatrix(&M));
@@ -21,10 +25,13 @@ void solve_linear_system_numpy(Matrix *mat, double *res)
     numpy2c_double_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(double));
     delete p;
+		return true;
 }
 
-void solve_linear_system_numpy(Matrix *mat, cplx *res)
+bool CommonSolverNumPy::solve(Matrix *mat, cplx *res)
 {
+  //printf("NumPy solver - cplx\n");
+
     CSRMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSRMatrix(&M));
@@ -37,10 +44,13 @@ void solve_linear_system_numpy(Matrix *mat, cplx *res)
     numpy2c_double_complex_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(cplx));
     delete p;
+		return true;
 }
 
-void solve_linear_system_scipy_umfpack(Matrix *mat, double *res)
+bool CommonSolverSciPyUmfpack::solve(Matrix *mat, double *res)
 {
+  //printf("SciPy UMFPACK solver\n");
+
     CSCMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSCMatrix(&M));
@@ -57,10 +67,13 @@ void solve_linear_system_scipy_umfpack(Matrix *mat, double *res)
     numpy2c_double_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(double));
     delete p;
+		return true;
 }
 
-void solve_linear_system_scipy_umfpack(Matrix *mat, cplx *res)
+bool CommonSolverSciPyUmfpack::solve(Matrix *mat, cplx *res)
 {
+  //printf("SciPy UMFPACK solver - cplx\n");
+
     CSCMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSCMatrix(&M));
@@ -77,10 +90,13 @@ void solve_linear_system_scipy_umfpack(Matrix *mat, cplx *res)
     numpy2c_double_complex_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(cplx));
     delete p;
+		return true;
 }
 
-void solve_linear_system_scipy_cg(Matrix *mat, double *res)
+bool CommonSolverSciPyCG::solve(Matrix *mat, double *res)
 {
+  //printf("SciPy CG solver\n");
+
     CSRMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSRMatrix(&M));
@@ -93,10 +109,18 @@ void solve_linear_system_scipy_cg(Matrix *mat, double *res)
     numpy2c_double_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(double));
     delete p;
+		return true;
 }
 
-void solve_linear_system_scipy_gmres(Matrix *mat, double *res)
+bool CommonSolverSciPyCG::solve(Matrix *mat, cplx *res)
 {
+    _error("CommonSolverSciPyCG::solve(Matrix *mat, cplx *res) not implemented.");
+}
+
+bool CommonSolverSciPyGMRES::solve(Matrix *mat, double *res)
+{
+  //printf("SciPy GMRES solver\n");
+
     CSRMatrix M(mat);
     Python *p = new Python();
     p->push("m", c2py_CSRMatrix(&M));
@@ -109,4 +133,64 @@ void solve_linear_system_scipy_gmres(Matrix *mat, double *res)
     numpy2c_double_inplace(p->pull("x"), &x, &n);
     memcpy(res, x, n*sizeof(double));
     delete p;
+		return true;
 }
+
+bool CommonSolverSciPyGMRES::solve(Matrix *mat, cplx *res)
+{
+    _error("CommonSolverSciPyGMRES::solve(Matrix *mat, cplx *res) not implemented.");
+		return false;
+}
+
+#else
+
+bool CommonSolverNumPy::solve(Matrix *mat, double *res)
+{
+    _error("CommonSolverNumPy::solve(Matrix *mat, double *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverNumPy::solve(Matrix *mat, cplx *res)
+{
+    _error("CommonSolverNumPy::solve(Matrix *mat, cplx *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyUmfpack::solve(Matrix *mat, double *res)
+{
+    _error("CommonSolverSciPyUmfpack::solve(Matrix *mat, double *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyUmfpack::solve(Matrix *mat, cplx *res)
+{
+    _error("CommonSolverSciPyUmfpack::solve(Matrix *mat, cplx *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyCG::solve(Matrix *mat, double *res)
+{
+    _error("CommonSolverSciPyCG::solve(Matrix *mat, double *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyCG::solve(Matrix *mat, cplx *res)
+{
+    _error("CommonSolverSciPyCG::solve(Matrix *mat, cplx *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyGMRES::solve(Matrix *mat, double *res)
+{
+    _error("CommonSolverSciPyGMRES::solve(Matrix *mat, double *res) not implemented.");
+		return false;
+}
+
+bool CommonSolverSciPyGMRES::solve(Matrix *mat, cplx *res)
+{
+    _error("CommonSolverSciPyGMRES::solve(Matrix *mat, cplx *res) not implemented.");
+		return false;
+}
+
+
+#endif
