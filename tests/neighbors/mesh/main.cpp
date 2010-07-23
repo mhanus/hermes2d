@@ -26,10 +26,10 @@ int main(int argc, char* argv[])
 	mesh.refine_element(28);
 
   // display the mesh
-	// MeshView mview("neighbors_test", 100, 100, 500, 500);
-	// mview.show(&mesh);
+	MeshView mview("neighbors_test", 100, 100, 500, 500);
+	mview.show(&mesh);
   // wait for keyboard or mouse input
-  // View::wait("Waiting for keyboard or mouse input.");
+  View::wait();
 
 	Element* e = NULL;
 	NeighborSearch* neighb = NULL;

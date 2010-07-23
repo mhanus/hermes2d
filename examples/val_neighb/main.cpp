@@ -10,7 +10,7 @@
  */
 
 
-const int P_INIT = 3;          // Polynomial degree of mesh elements
+const int P_INIT = 1;          // Polynomial degree of mesh elements
 const int INIT_REF_NUM = 3;    // Number of initial uniform mesh refinements
 
 scalar proj_func(double x, double y, double &dx, double &dy)
@@ -83,19 +83,18 @@ int main(int argc, char* argv[])
   mesh.refine_element(87);
 
   // display the mesh
-	 MeshView mview("info_neighbor", 100, 100, 500, 500);
+/*	 MeshView mview("info_neighbor", 100, 100, 500, 500);
 	 mview.show(&mesh);
   // wait for keyboard or mouse input
    View::wait("Waiting for keyboard or mouse input.");
 */
   // create the L2 space
-  L2Space space(&mesh,3);
+  L2Space space(&mesh,P_INIT);
   space.set_bc_types(bc_types);
 
-
- /// BaseView bview;
-//  bview.show(&space);
- // bview.wait_for_close();
+  BaseView bview;
+  bview.show(&space);
+  bview.wait_for_close();
 
   Solution sln;
   Solution xprev;

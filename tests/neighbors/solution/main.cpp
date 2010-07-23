@@ -90,8 +90,8 @@ int main(int argc, char* argv[])
 	mesh.refine_element(27, 1);
 	mesh.refine_element(30);
 
-//   MeshView mview("Mesh ", 100, 100, 500, 500);
-//   mview.show(&mesh);
+  MeshView mview("Mesh ", 100, 100, 500, 500);
+  mview.show(&mesh);
 
  // Create an H1 space.
  const int P_INIT = 1;
@@ -130,10 +130,9 @@ int main(int argc, char* argv[])
   sys.solve(&sln);
 
   // visualize the solution
-  // ScalarView view1("Solution 1");
-  // view1.show(&sln);
-  // View::wait("Waiting for all views to be closed.");
-  // wait for keyboard or mouse input
+   ScalarView view1("Solution 1");
+   view1.show(&sln);
+   View::wait("Waiting for all views to be closed.");
 
 
   // begin of test
