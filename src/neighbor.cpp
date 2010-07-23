@@ -141,7 +141,7 @@ void NeighborSearch::set_active_edge(int edge)
 				{
 						compute_fn_values();
 				}
-				debug_log("number of neighbors: %d ", n_neighbors);
+				debug_log("number of neighbors on the way down: %d ", n_neighbors);
 			}
 		}
 	}
@@ -381,9 +381,8 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 	}
 };
 
-/*! \brief Fill function values of central a neighbors elements
+/*! \brief Fill function values / derivatives for the central element and one of its neighbors.
  *
- *	The flag distinguish ways and according the way it is chosen on what element are applied transformations.
  */
 
 void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
@@ -498,8 +497,8 @@ void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
 			sol->set_active_element(neighb_el);
 
 			// Transform neighbor element on appropriate part.
-			for(int i = 0; i < n_trans[n_neighbors]; i++){
-				sol->push_transform(transformations[n_neighbors][i]);
+			for(int i = 0; i < n_trans[neigh]; i++){
+				sol->push_transform(transformations[neigh][i]);
 			}
 
 			int max_order;
@@ -525,7 +524,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
 			sol->set_quad_order(eo);
 
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
-			fn_values_neighbor[n_neighbors] = local_fn_values_n;
+			fn_values_neighbor[neigh] = local_fn_values_n;
 
 			RefMap* rm = sol->get_refmap();
 			Func<scalar>* func;
@@ -538,7 +537,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
 			eo = quad->get_edge_points(active_edge, max_order);
 			sol->set_quad_order(eo);
 			for(int i = 0; i < number_integ_points; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
-			fn_values[n_neighbors] = local_fn_values_c;
+			fn_values[neigh] = local_fn_values_c;
 
 			Func<scalar>* func1;
 			func1 = init_fn(sol, rm, eo);
@@ -555,7 +554,7 @@ void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
 	if(number_integ_points == 0)
 		error("number of integration points is 0");
 
-	np[n_neighbors] = number_integ_points;
+	np[neigh] = number_integ_points;
 
 	// Reset transformations.
 	sol->reset_transform();
