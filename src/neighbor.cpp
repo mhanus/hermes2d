@@ -1,17 +1,16 @@
 #include "neighbor.h"
 
-NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given_sln, Space* given_space)
+NeighborSearch::NeighborSearch(Element* central_el, Mesh* mesh, MeshFunction* sol, Space* space)
+: sol(sol), central_el(central_el), space(space), mesh(mesh)
 {
-	central_el = e;
-	mesh = given_mesh;
-	sol = given_sln;
-	space = given_space;
-	if(sol != NULL){
+	if(sol != NULL)
+	{
 		quad = sol->get_quad_2d();
 		sol->set_active_element(central_el);
 		central_order = sol->get_fn_order();
 	}
-	else{
+	else
+	{
 		quad = NULL;
 		central_order = -1;
 	}
@@ -24,11 +23,10 @@ NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given
 	max_of_orders = -1;
 
 	n_neighbors = 0;
-	neighbors_id.reserve(20 * e->nvert);
+	neighbors_id.reserve(20 * central_el->nvert);
 	neighbors.reserve(20);
 	values_central.reserve(20);
 	values_neighbor.reserve(20);
-
 	neighbor_edges.reserve(20);
 };
 
@@ -50,103 +48,102 @@ NeighborSearch::~NeighborSearch()
 };
 
 
-void NeighborSearch::set_active_edge(int edge)
+void NeighborSearch::set_active_edge(EdgePos * ep)
 {
 	// Erase all data from previous edge or element.
 	clean_all();
 
-	active_edge = edge;
+	active_edge = ep->edge;
 
+	neighb_el = central_el->get_neighbor(active_edge);
+	
 	debug_log("central element: %d", central_el->id);
-	if (central_el->en[active_edge]->bnd == 0)
+
+	//First case : The neighboring element is of the same size as the central one.
+	if (neighb_el != NULL)
 	{
-		neighb_el = central_el->get_neighbor(active_edge);
-		// Test if on the other side of the edge is active element.
-		if (neighb_el != NULL)
-		{
-			debug_log("active neighbor el: %d", neighb_el->id);
-			for (int j = 0; j < neighb_el->nvert; j++)
+		debug_log("active neighbor el: %d", neighb_el->id);
+		//Finding of the edge on the neighboring element that agrees with the active one.
+		for (int j = 0; j < neighb_el->nvert; j++)
+			if (central_el->en[active_edge] == neighb_el->en[j])
 			{
-				if (central_el->en[active_edge] == neighb_el->en[j])
-				{
-					neighbor_edge = j;
-
-					// Get orientation of neighbor edge.
-					int p1 = central_el->vn[active_edge]->id;
-					int p2 = central_el->vn[(active_edge + 1) % central_el->nvert]->id;
-
-					NeighborEdgeInfo local_edge_info;
-					local_edge_info.local_num_of_edge = neighbor_edge;
-
-					direction_neighbor_edge(p1, p2, 0, &local_edge_info);
-
-					// Add the local_edge_info into the vector.
-					neighbor_edges.push_back(local_edge_info);
-
-					// Raise the number of neighbors.
-					n_neighbors = n_neighbors++;
-
-					// Add neighbor id to neighbors_id.
-					neighbors_id.push_back(neighb_el->id);
-					neighbors.push_back(neighb_el);
-
-					way_flag = H2D_NO_TRANSF;
-					if(sol != NULL)
-					{
-						compute_fn_values();
-					}
-				}
+				neighbor_edge = j;
+				break;
 			}
-		} else
+		// Get orientation of neighbor edge.
+			//p1 = ep->v1, p2 = ep->v2
+		int p1 = ep->v1
+		int p2 = central_el->vn[(active_edge + 1) % central_el->nvert]->id;
+
+		NeighborEdgeInfo local_edge_info;
+		local_edge_info.local_num_of_edge = neighbor_edge;
+
+		direction_neighbor_edge(p1, p2, 0, &local_edge_info);
+
+		// Add the local_edge_info into the vector.
+		neighbor_edges.push_back(local_edge_info);
+
+		// Raise the number of neighbors.
+		n_neighbors = n_neighbors++;
+
+		// Add neighbor id to neighbors_id.
+		neighbors_id.push_back(neighb_el->id);
+		neighbors.push_back(neighb_el);
+
+		way_flag = H2D_NO_TRANSF;
+		if(sol != NULL)
 		{
-			Node* vertex = NULL;
-			vertex = mesh->peek_vertex_node(central_el->en[active_edge]->p1,	central_el->en[active_edge]->p2);
-			int orig_vertex_id[2];
-			orig_vertex_id[0] = central_el->vn[active_edge]->id;
-			orig_vertex_id[1]	= central_el->vn[(active_edge + 1) % central_el->nvert]->id;
-			if (vertex == NULL)
-			{
-				// way up
-
-				Element* parent = NULL;
-				parent = central_el->parent;
-
-				Node** road_vertices;
-				road_vertices = new Node*[max_n_trans]; // array containing vertices we went through
-				int n_road_vertices = 0; // number of used vertices
-
-				for (int j = 0; j < max_n_trans; j++)
-					road_vertices[j] = NULL;
-
-				finding_act_elem_up(parent, active_edge, orig_vertex_id, road_vertices, n_road_vertices);
-
-				delete[] road_vertices;
-				way_flag = H2D_WAY_UP;
-				if(sol != NULL)
-				{
-						compute_fn_values();
-				}
-
-			} else
-			{
-				// way down
-
-				int road[max_n_trans]; // array for temporal transformation
-				int n_road = 0; // number of used transformations
-
-				finding_act_elem_down( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
-
-				way_flag = H2D_WAY_DOWN;
-				if(sol != NULL)
-				{
-						compute_fn_values();
-				}
-				debug_log("number of neighbors: %d ", n_neighbors);
-			}
+			compute_fn_values();
 		}
 	}
 	else
-		error("The given edge isn't inner");
+	{
+		Node* vertex = NULL;
+		vertex = mesh->peek_vertex_node(central_el->en[active_edge]->p1,	central_el->en[active_edge]->p2);
+		int orig_vertex_id[2];
+		orig_vertex_id[0] = central_el->vn[active_edge]->id;
+		orig_vertex_id[1]	= central_el->vn[(active_edge + 1) % central_el->nvert]->id;
+		if (vertex == NULL)
+		{
+			// way up
+
+			Element* parent = NULL;
+			parent = central_el->parent;
+
+			Node** road_vertices;
+			road_vertices = new Node*[max_n_trans]; // array containing vertices we went through
+			int n_road_vertices = 0; // number of used vertices
+
+			for (int j = 0; j < max_n_trans; j++)
+				road_vertices[j] = NULL;
+
+			finding_act_elem_up(parent, active_edge, orig_vertex_id, road_vertices, n_road_vertices);
+
+			delete[] road_vertices;
+			way_flag = H2D_WAY_UP;
+			if(sol != NULL)
+			{
+					compute_fn_values();
+			}
+
+		} 
+		else
+		{
+			// way down
+
+			int road[max_n_trans]; // array for temporal transformation
+			int n_road = 0; // number of used transformations
+
+			finding_act_elem_down( vertex, orig_vertex_id, road, n_road,	active_edge, central_el->nvert);
+
+			way_flag = H2D_WAY_DOWN;
+			if(sol != NULL)
+			{
+					compute_fn_values();
+			}
+			debug_log("number of neighbors: %d ", n_neighbors);
+		}
+	}
 };
 
 
@@ -573,14 +570,13 @@ void NeighborSearch::direction_neighbor_edge(int parent1, int parent2, int part_
 	{
 		if (neighb_first_vertex != parent1)
 			test = 1; // means the orientation is conversely
-	} else
+	}
+	else
 	{
 		if (neighb_first_vertex == parent2)
 			test = 1; // means the orientation is conversely
 	}
-
 	edge_info->orientation = test;
-
 }
 
 void NeighborSearch::reverse_vector(scalar* vector, int n)

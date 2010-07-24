@@ -981,44 +981,47 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
 // Used only for inner edges.
 scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {
-	// determine the integration order
-  int inc = (fv->get_num_components() == 2) ? 1 : 0;
-  Func<Ord>* ov = init_fn_ord(fv->get_fn_order() + inc);
+	// Integration order : order of the current shape function + 1 if it is 2-dimensional
+  Func<Ord>* ov = init_fn_ord(fv->get_fn_order() + fv->get_num_components() - 1);
 
-  double fake_wt = 1.0;
-  Geom<Ord>* fake_e = init_geom_ord();
+	Geom<Ord>* fake_e = init_geom_ord();
+
   int order = rv->get_inv_ref_order();
 
+	double fake_wt = 1.0;
+
   Quad2D* quad = fv->get_quad_2d();
-  scalar res = 0;
-  int idx_ref = rv->get_transform();
+  
+	scalar res = 0;
+  
+	int idx_ref = rv->get_transform();
   int idx_form = fv->get_transform();
+	
 	int n_ext = lf->ext.size();
 
-	if(n_ext == 0)
-	{
-		warn("In initialization of surface linear form weren't added any extern functions (f.e. solution from previous step)");
-		return 0;
-	}
-
 	Element* el;
+
 	el = rv->get_active_element();
-	Mesh* mesh = lf->ext[0]->get_mesh();
-	NeighborSearch* neighb;
+	
+	//pro jistotu plnit jeste jednou v ty assemblovaci procedure pred zavolanim tyhle fce ( ono se to mozna plni u tech matrixforms taky)
 	Space* space = ep->space_v;
 
+	//zjistit proc se tenhle jeden svinec ( s ext[0] ) dela separatne
+	Mesh* mesh = lf->ext[0]->get_mesh();
+	NeighborSearch* neighb;
 	neighb = new NeighborSearch(el, mesh);
-	neighb->set_active_edge(ep->edge);
+	neighb->set_active_edge(ep);
 	int n_neighbors = neighb->get_number_of_neighbs();
-	
 	std::vector<int> max_of_orders(n_neighbors, -1);
 
 	std::vector<NeighborSearch*> neighbors(n_ext, NULL);
+	
 	std::vector<std::vector<int>*> neighbors_orders(n_ext, NULL);
+	
 	for(int i = 0; i < n_ext; i++)
 	{
-		neighbors[i] = new NeighborSearch(el, mesh, lf->ext[i], space);
-		neighbors[i]->set_active_edge(ep->edge);
+		neighbors[i] = new NeighborSearch(el, lf->ext[i]->get_mesh(), lf->ext[i], space);
+		neighbors[i]->set_active_edge(ep);
 		neighbors_orders[i] = neighbors[i]->get_orders();
 	}
 
