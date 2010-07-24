@@ -1005,7 +1005,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	//pro jistotu plnit jeste jednou v ty assemblovaci procedure pred zavolanim tyhle fce ( ono se to mozna plni u tech matrixforms taky)
 	Space* space = ep->space_v;
 
-	//zjistit proc se tenhle jeden svinec ( s ext[0] ) dela separatne
+	//zjistit proc se tenhle jeden ( s ext[0] ) dela separatne, kdyz se to potom v tom for cyklu dela pro vsechny
 	Mesh* mesh = lf->ext[0]->get_mesh();
 	NeighborSearch* neighb;
 	neighb = new NeighborSearch(el, mesh);
