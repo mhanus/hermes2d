@@ -27,7 +27,6 @@
 #include "neighbor.h"
 #include "limit_order.h"
 #include <algorithm>
-#include "python_solvers.h"
 #include "neighbor.h"
 
 int H2D_DEFAULT_PROJ_NORM = 1;
@@ -1010,7 +1009,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	neighb = new NeighborSearch(el, mesh);
 	neighb->set_active_edge(ep->edge);
 	int n_neighbors = neighb->get_number_of_neighbs();
-	
+
 	std::vector<int> max_of_orders(n_neighbors, -1);
 
 	std::vector<NeighborSearch*> neighbors(n_ext, NULL);
@@ -1039,7 +1038,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 
 	for(int i = 0; i < n_neighbors; i++)
 	{
-		
+
 		ExtData<Ord>* fake_ext = new ExtData<Ord>;
 		Func<Ord>** fake_ext_fn = new Func<Ord>*[n_ext];
 		Func<Ord>** fake_ext_fn_neighbor = new Func<Ord>*[n_ext];
