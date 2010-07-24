@@ -1,6 +1,6 @@
-if(NOT H2D_COMPLEX)
+if(NOT H2D_REAL)
     return()
-endif(NOT H2D_COMPLEX)
+endif(NOT H2D_REAL)
 project(space-l2)
 
 # use the complex version of the library:
