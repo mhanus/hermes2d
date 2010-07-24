@@ -11,7 +11,6 @@
 
 
 const int P_INIT = 1;          // Polynomial degree of mesh elements
-const int INIT_REF_NUM = 3;    // Number of initial uniform mesh refinements
 
 scalar proj_func(double x, double y, double &dx, double &dy)
 {
@@ -61,33 +60,54 @@ scalar essential_bc_values(int ess_bdy_marker, double x, double y)
 
 int main(int argc, char* argv[])
 {
-  char *f;
-  char *def_f = "square.mesh";
+  // Decide which mesh to refine and how from the command line argument.
+
+  enum ref_type {NO_REF, DEFAULT_REF, TEST_REF};
+  ref_type refinement = NO_REF;
+  std::string mesh_file = "square.mesh";
 
   if (argc < 2) {
-    info("Using square.mesh for the meshfile.");
-    f = def_f;
+    info("Using default refinement of square.mesh.");
+    refinement = DEFAULT_REF;
   }  else {
-    f = argv[1];
+    if (!strcmp(argv[1], "test")) {
+      info("Using testing refinement of square.mesh.");
+      refinement = TEST_REF;
+    }
+    else {
+      mesh_file = argv[1];
+      info("Using mesh %s", argv[1]);
+    }
   }
 
-  // load the mesh
+  // Load and refine the mesh.
   Mesh mesh;
   H2DReader mloader;
-  mloader.load(f, &mesh);
+  mloader.load(mesh_file.c_str(), &mesh);
 
-  // uniform mesh refinements
-  for (int i=0; i<INIT_REF_NUM; i++) mesh.refine_all_elements();
+  switch (refinement) {
+    case DEFAULT_REF:
+      // Initial uniform refinement.
+      for (int i=0; i<3; i++) mesh.refine_all_elements();
 
-  mesh.refine_element(29);
-  mesh.refine_element(87);
+      // Two additional refinements of selected elements.
+      mesh.refine_element(29);
+      mesh.refine_element(87);
+
+      break;
+    case TEST_REF:
+      mesh.refine_element(0);
+      mesh.refine_element(1);
+      mesh.refine_element(7);
+      break;
+  }
 
   // display the mesh
-/*	 MeshView mview("info_neighbor", 100, 100, 500, 500);
+	 MeshView mview("info_neighbor", 100, 100, 500, 500);
 	 mview.show(&mesh);
   // wait for keyboard or mouse input
    View::wait("Waiting for keyboard or mouse input.");
-*/
+
   // create the L2 space
   L2Space space(&mesh,P_INIT);
   space.set_bc_types(bc_types);

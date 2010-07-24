@@ -225,10 +225,11 @@ private:
 		H2D_WAY_UP = 2			//!< Transformation of neighbor element, central element is son.
 	};
 
-	/*! Fill function values of central and neighbor element.
-   * \param[in] flag Flag by which we decide on what element will be applicated transformations.
+	/*! Fill function values / derivatives for the central element and one of its neighbors.
+   * \param[in] flag Determines whether transformations will be applied to the central or to the neighbor element.
+   * \param[in] neigh Determines the neighboring element.
    */
-	void set_fn_values(Trans_flag flag, int i);
+	void set_fn_values(Trans_flag flag, int neigh);
 
 	//! Vector containing all neighbor edges information corresponding to active edge.
 	std::vector<NeighborEdgeInfo> neighbor_edges;

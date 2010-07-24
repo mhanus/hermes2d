@@ -28,7 +28,6 @@
 #include "views/view.h"
 #include "views/vector_view.h"
 
-#include "python_solvers.h"
 
 void NonlinSystem::init_nonlin()
 {
@@ -36,8 +35,8 @@ void NonlinSystem::init_nonlin()
   //res_l2 = res_l1 = res_max = -1.0;
 
   // Tell LinSystem not to add Dirichlet contributions to the RHS.
-  // The reason for this is that in NonlinSystem the Jacobian matrix 
-  // is assembled, and the Dirichlet lift is cancelled by the derivative 
+  // The reason for this is that in NonlinSystem the Jacobian matrix
+  // is assembled, and the Dirichlet lift is cancelled by the derivative
   // with respect to the coefficient vector.
   want_dir_contrib = false;
 }
@@ -46,7 +45,7 @@ void NonlinSystem::init_nonlin()
 NonlinSystem::NonlinSystem() {}
 
 NonlinSystem::NonlinSystem(WeakForm* wf_, Solver* solver_)
-{ 
+{
   this->init_lin(wf_, solver_);
   this->init_nonlin();
 }
@@ -61,7 +60,7 @@ NonlinSystem::NonlinSystem(WeakForm* wf_)
 NonlinSystem::NonlinSystem(WeakForm* wf_, Solver* solver_, Tuple<Space*> spaces_)
 {
   int n = spaces_.size();
-  if (n != wf_->neq) 
+  if (n != wf_->neq)
     error("Number of spaces does not match number of equations in LinSystem::LinSystem().");
   this->init_lin(wf_, solver_);
   this->init_spaces(spaces_);
@@ -78,9 +77,9 @@ NonlinSystem::NonlinSystem(WeakForm* wf_, Tuple<Space*> spaces_)
   this->init_nonlin();
 }
 
-NonlinSystem::NonlinSystem(WeakForm* wf_, Solver* solver_, Space *s_) 
+NonlinSystem::NonlinSystem(WeakForm* wf_, Solver* solver_, Space *s_)
 {
-  if (wf_->neq != 1) 
+  if (wf_->neq != 1)
     error("Number of spaces does not match number of equations in LinSystem::LinSystem().");
   this->init_lin(wf_, solver_);
   this->init_space(s_);
@@ -144,7 +143,7 @@ bool NonlinSystem::solve(Tuple<Solution*> sln)
   int n = sln.size();
 
   // if the number of solutions does not match the number of equations, throw error
-  if (n != this->wf->neq) 
+  if (n != this->wf->neq)
     error("Number of solutions does not match the number of equations in LinSystem::solve().");
 
   // if no matrix solver defined, throw error
@@ -160,7 +159,7 @@ bool NonlinSystem::solve(Tuple<Solution*> sln)
 
   // check matrix size
   if (ndof == 0) error("ndof = 0 in LinSystem::solve().");
-  if (ndof != this->A->get_size()) 
+  if (ndof != this->A->get_size())
     error("Matrix size does not match vector length in LinSystem:solve().");
 
   // time measurement
@@ -194,13 +193,13 @@ bool NonlinSystem::solve(Solution* sln)
 }
 
 // Newton's method for an arbitrary number of equations.
-bool NonlinSystem::solve_newton(Tuple<Solution*> u_prev, double newton_tol, 
-                                int newton_max_iter, bool verbose, 
-                                Tuple<MeshFunction*> mesh_fns) 
+bool NonlinSystem::solve_newton(Tuple<Solution*> u_prev, double newton_tol,
+                                int newton_max_iter, bool verbose,
+                                Tuple<MeshFunction*> mesh_fns)
 {
   // sanity checks
   int n = u_prev.size();
-  if (n != this->wf->neq) 
+  if (n != this->wf->neq)
     error("The number of solutions in newton_solve() must match the number of equation in the PDE system.");
   if (this->spaces == NULL) error("spaces is NULL in solve_newton().");
   for (int i=0; i < n; i++) {
@@ -217,7 +216,7 @@ bool NonlinSystem::solve_newton(Tuple<Solution*> u_prev, double newton_tol,
   double res_l2_norm;
   do
   {
-    info("---- Newton iter %d:", it); 
+    info("---- Newton iter %d:", it);
 
     // reinitialize filters
     for (int i=0; i < n_mesh_fns; i++) mesh_fns[i]->reinit();
@@ -229,7 +228,7 @@ bool NonlinSystem::solve_newton(Tuple<Solution*> u_prev, double newton_tol,
 
     // calculate the l2-norm of residual vector
     res_l2_norm = this->get_residual_l2_norm();
-    if (verbose) printf("---- Newton iter %d, ndof %d, res. l2 norm %g\n", 
+    if (verbose) printf("---- Newton iter %d, ndof %d, res. l2 norm %g\n",
                         it, this->get_num_dofs(), res_l2_norm);
 
     it++;
