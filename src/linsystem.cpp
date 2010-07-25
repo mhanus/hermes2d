@@ -1005,30 +1005,19 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	//pro jistotu plnit jeste jednou v ty assemblovaci procedure pred zavolanim tyhle fce ( ono se to mozna plni u tech matrixforms taky)
 	Space* space = ep->space_v;
 
-	//zjistit proc se tenhle jeden ( s ext[0] ) dela separatne, kdyz se to potom v tom for cyklu dela pro vsechny
-	//Tenhle svinec nedela nic jinyho nez ze se naplni daty o sousedech instanci *neighb. Ta se dale pouziva na dvou misteh:
-	//  1. pro zjisteni n_neighbors o par radek dal, coz je pred tim for cyklem zapotrebi jen pro alokaci vektoru max_of_orders.
-	//Ten se v tom for cyklu nikde nevyuziva takze z tohoto duvodu neni neighb treba (a je mozne ziskat n_neighbors po cyklu z neighbors[0]).
-	//  2. pro ziskani transformaci pro rv a fv na r. 1088. Naplneni pole transformaci se provadi ve finding_act_element_up/down
-	//nezavisle na tom, jestli je this->sol == NULL a this->space == NULL nebo ne, a nikde jinde se ve tride Neighbor neprepisuje (jen cte),
-	//takze je jedno, jestli se na r. 1088 pouzije ukazatel neighb nebo neighbors[0]. Myslim, ze se toho muzeme bezpecne zbavit...
-	Mesh* mesh = lf->ext[0]->get_mesh();
-	NeighborSearch* neighb;
-	neighb = new NeighborSearch(el, mesh);
-	neighb->set_active_edge(ep);
-	int n_neighbors = neighb->get_number_of_neighbs();
-	std::vector<int> max_of_orders(n_neighbors, -1);
-
 	std::vector<NeighborSearch*> neighbors(n_ext, NULL);
-
 	std::vector<std::vector<int>*> neighbors_orders(n_ext, NULL);
 
 	for(int i = 0; i < n_ext; i++)
 	{
 		neighbors[i] = new NeighborSearch(el, lf->ext[i]->get_mesh(), lf->ext[i], space);
-		neighbors[i]->set_active_edge(ep);
+		neighbors[i]->set_active_edge(ep->edge);
 		neighbors_orders[i] = neighbors[i]->get_orders();
 	}
+
+	int n_neighbors = neighbors[0]->get_number_of_neighbs();
+	std::vector<int> max_of_orders(n_neighbors, -1);
+
 
 	// find the highest order
 	int help_var;
@@ -1085,7 +1074,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 
 		if(n_neighbors > 1) //way down
 		{
-			int* transformations = neighb->get_transformations(i);
+			int* transformations = neighbors[0]->get_transformations(i);
 			int index = 0;
 			while(transformations[index] != -1)
 			{
@@ -1129,8 +1118,6 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
   ov->free_ord(); delete ov;
   delete fake_e;
 
-
-	delete neighb;
 	neighbors.clear();
 
   return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights

@@ -22,6 +22,7 @@ NeighborSearch::NeighborSearch(Element* central_el, Mesh* mesh, MeshFunction* so
 
 	max_of_orders = -1;
 
+	//nemel by, kdyz ma maximalne 20 transformaci, mit tedy 21 sousedu maximalne?
 	n_neighbors = 0;
 	neighbors_id.reserve(20 * central_el->nvert);
 	neighbors.reserve(20);
@@ -48,12 +49,12 @@ NeighborSearch::~NeighborSearch()
 };
 
 
-void NeighborSearch::set_active_edge(EdgePos * ep)
+void NeighborSearch::set_active_edge(int edge)
 {
 	// Erase all data from previous edge or element.
 	clean_all();
 
-	active_edge = ep->edge;
+	active_edge = edge;
 
 	neighb_el = central_el->get_neighbor(active_edge);
 
@@ -73,7 +74,7 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 		// Edge info and its push into the vector.
 		NeighborEdgeInfo local_edge_info;
 		local_edge_info.local_num_of_edge = neighbor_edge;
-		local_edge_info.orientation = direction_neighbor_edge(ep->v1, ep->v2, 0);
+		local_edge_info.orientation = direction_neighbor_edge(central_el->vn[active_edge]->id, central_el->vn[(active_edge + 1) % central_el->nvert]->id, 0);
 		neighbor_edges.push_back(local_edge_info);
 
 		// Raise the number of neighbors.
@@ -94,8 +95,8 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 	{
 		Node* vertex = mesh->peek_vertex_node(central_el->en[active_edge]->p1,	central_el->en[active_edge]->p2);
 		int orig_vertex_id[2];
-		orig_vertex_id[0] = ep->v1;
-		orig_vertex_id[1]	= ep->v2;
+		orig_vertex_id[0] = central_el->vn[active_edge]->id;
+		orig_vertex_id[1]	= central_el->vn[(active_edge + 1) % central_el->nvert]->id;
 		// We did not find any vertex node between parent nodes of the active edge => The central element is smaller of the two.
 		if (vertex == NULL)
 		{
@@ -104,7 +105,7 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 			memset(road_vertices, 0, max_n_trans);
 			// Number of used vertices.
 			int n_road_vertices = 0;
-
+			// Looking for an active parent.
 			finding_act_elem_up(central_el->parent, orig_vertex_id, road_vertices, n_road_vertices);
 
 			delete[] road_vertices;

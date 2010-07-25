@@ -30,10 +30,10 @@ public:
     UmfpackSolver() {}
 
 protected:
-    virtual bool is_row_oriented() {}
-    virtual bool handles_symmetry() {}
+    virtual bool is_row_oriented() {return true;}
+    virtual bool handles_symmetry() {return true;}
     virtual bool solve(void*, int, int*, int*, scalar*, bool, scalar*,
-            scalar*){}
+            scalar*){return true;}
 };
 
 #endif

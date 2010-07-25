@@ -45,7 +45,7 @@ public:
 
 	//! Set active edge and compute all needed informations from neighbors.
 	// \param[in] edge This is local (element dependent) number of the edge.
-	void set_active_edge(EdgePos * ep);
+	void set_active_edge(int edge);
 
 	//! Number of neighbor elements on edge
 	int get_number_of_neighbs();
