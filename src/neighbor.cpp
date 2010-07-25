@@ -56,7 +56,7 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 	active_edge = ep->edge;
 
 	neighb_el = central_el->get_neighbor(active_edge);
-	
+
 	debug_log("central element: %d", central_el->id);
 
 	//First case : The neighboring element is of the same size as the central one.
@@ -100,11 +100,11 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 		if (vertex == NULL)
 		{
 			// Array containing vertices we went through, initialized to zero.
-			Node** road_vertices = new Node*[max_n_trans]; 
+			Node** road_vertices = new Node*[max_n_trans];
 			memset(road_vertices, 0, max_n_trans);
 			// Number of used vertices.
-			int n_road_vertices = 0; 
-			
+			int n_road_vertices = 0;
+
 			finding_act_elem_up(central_el->parent, orig_vertex_id, road_vertices, n_road_vertices);
 
 			delete[] road_vertices;
@@ -114,7 +114,7 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 					compute_fn_values();
 			}
 
-		} 
+		}
 		else
 		{
 			// way down
@@ -140,7 +140,7 @@ void NeighborSearch::set_active_edge(EdgePos * ep)
 /*! \brief Function for finding "bigger" neighbor.
  *
  * We use recurrence in this way.
- * If the neighbor is "bigger" then this means central element is descendant of some inactive elements. 
+ * If the neighbor is "bigger" then this means central element is descendant of some inactive elements.
  * We go through his parents and stop when we have an active element with such a neighbor that has an edge
  * which has same local number as the original edge.
  * Important is that all sons have same orientation as parent, so local number of the edge stays the same.
@@ -157,8 +157,8 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 	// If so, we know that there is an active element that "shares" this part of the edge with the central element.
 	// If not, we will have to go further up, but before that we must save the "road".
 	Node* edge = mesh->peek_edge_node(p1, p2);
-	
-	// When we are on parent, we take middle vertex on the edge and add it to road_vertices. 
+
+	// When we are on parent, we take middle vertex on the edge and add it to road_vertices.
 	// This is for consequent transformation of solution on the neighboring element.
 	vertex = mesh->peek_vertex_node(p1, p2);
 
@@ -173,8 +173,8 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 				if(road_vertices[n_road_vertices - 1]->id != vertex->id)
 					road_vertices[n_road_vertices++] = vertex;
 	}
-		
-	// If we do not find by the call to peek_edge_node anything else than the current active_edge 
+
+	// If we do not find by the call to peek_edge_node anything else than the current active_edge
 	// we call the same method for the parent.
 	if ((edge == NULL) || (central_el->en[active_edge]->id == edge->id))
 	{
@@ -192,7 +192,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 				debug_log("way up neighbor: %d", edge->elem[i]->id);
 				neighb_el = edge->elem[i];
 				neighbor_edge = -1;
-	
+
 				// Finds the correct edge on the neighboring element.
 				for(int j = 0; j < neighb_el->nvert; j++)
 					if(neighb_el->en[j] == edge)
@@ -200,7 +200,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 						neighbor_edge = j;
 						break;
 					}
-				
+
 				// Edge info and its push into the vector.
 
 					//tohle se delalo pozdeji, ale az potom co se zmenilo p1, p2, tak se to volalo s nejakymi id_of_par_orient...
@@ -216,7 +216,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 				for(int k = 0 ; k < n_road_vertices; k++)
 					debug_log("vertices on the way: %d", road_vertices[k]->id);
 				debug_log("\n");
-				
+
 				// We go backwards and process the road vertices.
 				for(int j = n_road_vertices; j > 0; j-- )
 				{
@@ -232,7 +232,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 							p1 = road_vertices[j]->id;
 						}
 						else
-						{ 
+						{
 							//tohle se nikdy nemuze stat z toho jak on to pole road_vertices konstruuje asi 60 radku nahoru
 							if(n->id == road_vertices[j-1]->id)
 							{
@@ -708,6 +708,9 @@ int NeighborSearch::get_orientation_neighb_edge(int part_edge)
 
 int NeighborSearch::get_edge_order(Element* e, int edge)
 {
+  if (space == NULL)
+    error("NeighborSearch::get_edge_order - space must be set before the function may be called.");
+
   Node* en = e->en[edge];
   if (en->id >= space->nsize || edge >= (int)e->nvert) return 0;
 
@@ -720,6 +723,9 @@ int NeighborSearch::get_edge_order(Element* e, int edge)
 
 int NeighborSearch::get_edge_order_internal(Node* en)
 {
+  if (space == NULL)
+    error("NeighborSearch::get_edge_order_internal - space must be set before the function may be called.");
+
   assert(en->type == H2D_TYPE_EDGE);
   Element** e = en->elem;
   int o1 = 0, o2 = 0;
