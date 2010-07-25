@@ -162,9 +162,11 @@ void Traverse::set_boundary_info(State* s, bool* bnd, EdgePos* ep)
   {
     for (int i = 0; i < 3; i++)
     {
-      bnd[i] = (s->bnd[i] && e->en[i]->bnd);
-      ep[i].lo = (double) s->lo[i] / ONE;
-      ep[i].hi = (double) s->hi[i] / ONE;
+      if ((bnd[i] = (s->bnd[i] && e->en[i]->bnd)))
+      {
+        ep[i].lo = (double) s->lo[i] / ONE;
+        ep[i].hi = (double) s->hi[i] / ONE;
+      }
     }
   }
   else
@@ -174,17 +176,17 @@ void Traverse::set_boundary_info(State* s, bool* bnd, EdgePos* ep)
     bnd[2] = (s->cr.t == ONE) && e->en[2]->bnd;
     bnd[3] = (s->cr.l == 0)   && e->en[3]->bnd;
 
-    ep[0].lo = (double) s->cr.l / ONE;        ep[0].hi = (double) s->cr.r / ONE;
-    ep[1].lo = (double) s->cr.b / ONE;        ep[1].hi = (double) s->cr.t / ONE;
-    ep[2].lo = (double) (ONE-s->cr.r) / ONE;  ep[2].hi = (double) (ONE-s->cr.l) / ONE;
-    ep[3].lo = (double) (ONE-s->cr.t) / ONE;  ep[3].hi = (double) (ONE-s->cr.b) / ONE;
+    if (bnd[0]) { ep[0].lo = (double) s->cr.l / ONE;        ep[0].hi = (double) s->cr.r / ONE; }
+    if (bnd[1]) { ep[1].lo = (double) s->cr.b / ONE;        ep[1].hi = (double) s->cr.t / ONE; }
+    if (bnd[2]) { ep[2].lo = (double) (ONE-s->cr.r) / ONE;  ep[2].hi = (double) (ONE-s->cr.l) / ONE; }
+    if (bnd[3]) { ep[3].lo = (double) (ONE-s->cr.t) / ONE;  ep[3].hi = (double) (ONE-s->cr.b) / ONE; }
   }
 
-  for (unsigned int i = 0; i < e->nvert; i++)
+  for (unsigned int i = 0; i < base->nvert; i++)
   {
-      int j = e->next_vert(i);
-      ep[i].v1 = e->vn[i]->id;
-      ep[i].v2 = e->vn[j]->id;
+      int j = base->next_vert(i);
+      ep[i].v1 = base->vn[i]->id;
+      ep[i].v2 = base->vn[j]->id;
       ep[i].marker = e->en[i]->marker;
       ep[i].edge = i;
   }
@@ -476,7 +478,7 @@ void Traverse::begin(int n, Mesh** meshes, Transformable** fn)
   int counter = 0;
   double min_elem_area = 1e30;
   Element* e;
-  for_all_base_elements(e, meshes[0])
+  for_all_base_elements(e, meshes[0]) 
   {
     areas[counter] = e->get_area();
     if (areas[counter] < min_elem_area) min_elem_area = areas[counter];
@@ -487,7 +489,7 @@ void Traverse::begin(int n, Mesh** meshes, Transformable** fn)
   double tolerance = min_elem_area/100.;
   for (int i = 1; i < n; i++) {
     counter = 0;
-    for_all_base_elements(e, meshes[i])
+    for_all_base_elements(e, meshes[i]) 
     {
       if (fabs(areas[counter] - e->get_area()) > tolerance) {
         printf("counter = %d, area_1 = %g, area_2 = %g.\n", counter, areas[counter], e->get_area());
