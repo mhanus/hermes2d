@@ -140,12 +140,11 @@ private:
 	//! Method "way up" for finding neighbor element, from smaller to larger.
 	/*!
 	 * \param[in] elem The pointer to parent element of the element from previous step.
-	 * \param[in] edge_num The active edge.
 	 * \param[in] orig_vertex_id Array containing oriented vertices of the active edge.
 	 * \param[in] road_vertices Array of vertices which we used in finding the active neighbor.
 	 * \param[in] n_road_vertices Number of vertices in array road_vertices.
 	 */
-	void finding_act_elem_up( Element* elem, int edge_num, int* orig_vertex_id, Node** road_vertices, int n_road_vertices);
+	void finding_act_elem_up( Element* elem, int* orig_vertex_id, Node** road_vertices, int n_road_vertices);
 
 	//! Method "Way down" for finding neighbor elements, from larger to smaller.
 	/*!
@@ -156,7 +155,7 @@ private:
 	 * \param[in] use_edge Just local name for active edge.
 	 *  \param[in] n_vert Number of vertices of the central element.
 	 */
-	void finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road, int use_edge, int n_vert);
+	void finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road);
 
 	//! Setting the sequence of function values of neighbor in same direction as on central element.
 	void set_correct_direction(int index);
@@ -211,7 +210,7 @@ private:
    * the neighbor edge are middle vertex and parent2.
    * \param[out] edge_info The relative orientation is copied into the struct NeighborEdgeInfo.
    */
-	void direction_neighbor_edge(int parent1, int parent2, int part_of_edge, NeighborEdgeInfo* edge_info);
+	int direction_neighbor_edge(int parent1, int parent2, int part_of_edge);
 
 	// cleaning before usage of given edge
 	void clean_all();
