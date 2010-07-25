@@ -5,7 +5,7 @@
 
 #include "matrix.h"
 #include "solvers.h"
-
+#define COMMON_WITH_SCIPY
 #ifdef COMMON_WITH_SCIPY
 #include "python_api.h"
 
