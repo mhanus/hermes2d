@@ -1006,14 +1006,11 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	Space* space = ep->space_v;
 
 	std::vector<NeighborSearch*> neighbors(n_ext, NULL);
-	std::vector<std::vector<int>*> neighbors_orders(n_ext, NULL);
 
 	for(int i = 0; i < n_ext; i++)
 	{
 		neighbors[i] = new NeighborSearch(el, lf->ext[i]->get_mesh(), lf->ext[i], space);
 		neighbors[i]->set_active_edge(ep->edge);
-		//proc pouzivat dalsi pole, kdyz si to vzdycky muzu brat z neighbors, matouci, smazem?
-		neighbors_orders[i] = neighbors[i]->get_orders();
 	}
 	// hodne hodne matouci, co kdyz mam multimesh..? Tak mam preci pro kazdy NeighborSearch obecne jiny pocet.
 	// cili pro multimesh by tohle bylo pole o velikosti n_ext.
@@ -1023,13 +1020,14 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	std::vector<int> max_of_orders(n_neighbors, -1);
 
 	// find the highest order
+  
 	int help_var;
 	for(int i = 0; i < n_neighbors; i++)
 	{
 		help_var = 0;
 		for(int j = 0; j < n_ext; j++)
 		{
-			help_var = neighbors_orders[j]->at(i);
+      help_var = neighbors[j]->get_orders()->at(i);
 			if(help_var > max_of_orders[i])
 				max_of_orders[i] = help_var;
 		}
@@ -1067,7 +1065,7 @@ scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf *lf, PrecalcShapeset *
 	  Func<scalar>** ext_fn_central = new Func<scalar>*[lf->ext.size()];
 	  Func<scalar>** ext_fn_neighbor = new Func<scalar>*[lf->ext.size()];
 
-		for(int j = 0; j < lf->ext.size(); j++)
+		for(int j = 0; j < n_ext; j++)
 		{
 			neighbors[j]->set_order_of_integration(order);
 			neighbors[j]->set_solution(lf->ext[j]);
