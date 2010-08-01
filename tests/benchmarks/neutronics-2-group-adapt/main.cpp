@@ -259,18 +259,13 @@ int main(int argc, char* argv[])
   for (int i = 0; i < INIT_REF_NUM[0]; i++) mesh1.refine_all_elements();
   for (int i = 0; i < INIT_REF_NUM[1]; i++) mesh2.refine_all_elements();
 
-  // Initialize the shapeset and the cache.
-  H1Shapeset shapeset;
-  PrecalcShapeset pss1(&shapeset);
-  PrecalcShapeset pss2(&shapeset);
-
   // Solution variables.
   Solution sln1, sln2;		      // Coarse mesh solution.
   Solution ref_sln1, ref_sln2;	// Reference solution.
 
   // Create H1 space with default shapesets.
   H1Space space1(&mesh1, bc_types, essential_bc_values_1, P_INIT[0]);
-  H1Space space2(&mesh2, bc_types, essential_bc_values_2, P_INIT[0]);
+  H1Space space2(&mesh2, bc_types, essential_bc_values_2, P_INIT[1]);
 
   // Initialize the weak formulation.
   WeakForm wf(2);
@@ -284,7 +279,7 @@ int main(int argc, char* argv[])
   wf.add_matrix_form_surf(1, 1, callback(biform_surf_1_1), bc_gamma);
 
   // Initialize refinement selector.
-  H1ProjBasedSelector selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER, &shapeset);
+  H1ProjBasedSelector selector(CAND_LIST, CONV_EXP, H2DRS_DEFAULT_ORDER);
   //selector.set_option(H2D_PREFER_SYMMETRIC_MESH, false);
   //selector.set_error_weights(2.25, 1, sqrt(2.0));
 

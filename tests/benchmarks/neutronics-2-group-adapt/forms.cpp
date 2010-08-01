@@ -64,5 +64,5 @@ Scalar liform_1(int n, double *wt, Func<Scalar> *u_ext[], Func<Real> *v, Geom<Re
 // Integration order for the volumetric linear form
 Ord liform_1_ord(int n, double *wt, Func<Ord> *u_ext[], Func<Ord> *v, Geom<Ord> *e, ExtData<Ord> *ext)
 {
-  return 10+v->val[0].get_order();  // returning the polynomial degree of the test function plus two
+  return 20+v->val[1].get_order();  // returning the polynomial degree of the test function plus two
 }
