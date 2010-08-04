@@ -194,7 +194,7 @@ int main(int argc, char* argv[])
   // Initialize the weak formulation.
   WeakForm wf(2);
   wf.add_matrix_form(0, 0, jac_TT, jac_TT_ord, H2D_UNSYM, H2D_ANY, &T_prev_newton);
-  wf.add_matrix_form(0, 1, jac_Tphi, jac_Tphi_ord, H2D_UNSYM, H2D_ANY, 0);
+  wf.add_matrix_form(0, 1, jac_Tphi, jac_Tphi_ord, H2D_UNSYM, H2D_ANY);
   wf.add_vector_form(0, res_T, res_T_ord, H2D_ANY, 
                 Tuple<MeshFunction*>(&T_prev_newton, &T_prev_time, &phi_prev_newton));
   wf.add_matrix_form(1, 0, jac_phiT, jac_phiT_ord, H2D_UNSYM, H2D_ANY, 
