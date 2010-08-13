@@ -50,12 +50,12 @@ Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData
 // boundary conditions
 BCType bc_types(int marker)
 {
-   return BC_NONE;
+   return BC_ESSENTIAL;
 }
 // function values for Dirichlet boundary conditions.
 scalar essential_bc_values(int ess_bdy_marker, double x, double y)
 {
-  return 0;
+  return x*x*x + y*y*y;
 }
 
 int main(int argc, char* argv[])
@@ -102,20 +102,19 @@ int main(int argc, char* argv[])
       break;
   }
 
-  // display the mesh
-	 MeshView mview("info_neighbor", 100, 100, 500, 500);
-	 mview.show(&mesh);
-  // wait for keyboard or mouse input
-   View::wait("Waiting for keyboard or mouse input.");
-
   // create the L2 space
   L2Space space(&mesh,P_INIT);
-  space.set_bc_types(bc_types);
+  space.set_element_order(3, H2D_MAKE_QUAD_ORDER(1,4));
+  space.set_element_order(4, H2D_MAKE_QUAD_ORDER(3,1));
+  space.set_essential_bc_values(essential_bc_values);
+  space.set_bc_types(bc_types); // Zde se vola assign_dofs(), kde nasledne update_edge_bc_values(); tam je zapotrebi mit essential_bc_values_by_coord, proto se set_bc_types musi volat az za set_essential_bc_values.
 
+  // display the mesh
+  OrderView oview("info_neighbor", 100, 100, 500, 500);
+  oview.show(&space);
   BaseView bview;
   bview.show(&space);
-  bview.wait_for_close();
-
+  
   Solution sln;
   Solution xprev;
   xprev.set_exact(&mesh, &proj_func);
@@ -129,6 +128,72 @@ int main(int argc, char* argv[])
   // if you want to work in linear surface form with values from neighbors use flag H2D_ANY_INNER_EDGE.
   wf.add_vector_form_surf(callback(linear_form_surf), H2D_ANY_INNER_EDGE, Tuple<MeshFunction* >(&xprev));
 
+  Shapeset *shapeset = space.get_shapeset();
+  PrecalcShapeset pss(shapeset);
+  AsmList al_c, al_n;
+  pss.set_quad_2d(&g_quad_2d_std);
+  
+  Element *e = mesh.get_element(3);
+  pss.set_active_element(e);
+  space.get_element_assembly_list(e, &al_c);
+  printf("CENT\n");
+  for (int j = 0; j < al_c.cnt; j++) {
+    int idx = al_c.idx[j];
+    pss.set_active_shape(idx);
+    printf("%d/%d\n", idx, al_c.dof[j]);
+    //int order = pss.get_shapeset()->get_order(idx);
+    {
+      int order = H2D_GET_H_ORDER( pss.get_shapeset()->get_order(idx) );
+      printf(" %s : ", "HORIZ");
+      pss.set_quad_order(order, H2D_FN_VAL);
+      Quad2D* quad = pss.get_quad_2d();
+      double* val = pss.get_fn_values();
+      double3* pts = quad->get_points(order);
+      for (int k = 0; k < quad->get_num_points(order); k++)
+        printf("(%f,%f) : %f\n\t     ", pts[k][0], pts[k][1], val[k]);
+      printf("\n");
+    }
+    {
+      int order = H2D_GET_V_ORDER( pss.get_shapeset()->get_order(idx) );
+      printf(" %s : ", "VERT");
+      pss.set_quad_order(order, H2D_FN_VAL);
+      Quad2D* quad = pss.get_quad_2d();
+      int eo = quad->get_edge_points(3, order);
+      double3* pts = quad->get_points(eo);
+      pss.set_quad_order(eo, H2D_FN_VAL);
+      double* val = pss.get_fn_values();
+      for (int k = 0; k < quad->get_num_points(eo); k++)
+        printf("(%f,%f) : %f/%f\n\t     ", pts[k][0], pts[k][1], val[k], pss.get_shapeset()->get_fn_value(idx, pts[k][0], pts[k][1], 0));
+      printf("\n");
+    }
+  }
+  
+  printf("\t %d \t\n", g_quad_2d_std.get_mode());
+  
+  e = mesh.get_element(4);
+  pss.set_active_element(e);
+  space.get_element_assembly_list(e, &al_n);
+  printf("NEIB\n");  
+  for (int j = 0; j < al_n.cnt; j++) {
+    int idx = al_n.idx[j];
+    pss.set_active_shape(idx);
+    printf("%d/%d\n", idx, al_n.dof[j]);
+    int order = pss.get_shapeset()->get_order(idx);
+    printf(" %s : ", get_quad_order_str(order).c_str());
+    pss.set_quad_order(order, H2D_FN_VAL);
+    Quad2D* quad = pss.get_quad_2d();
+    double* val = pss.get_fn_values();
+    double val_tst = pss.get_shapeset()->get_fn_value(idx, -0.1, 0.5, 0);
+    printf("%f\n", val_tst);
+    double3* pts = quad->get_points(order);
+    for (int k = 0; k < quad->get_num_points(order); k++)
+      printf("(%f,%f) : %f\n\t     ", pts[k][0], pts[k][1], val[k]);
+    printf("\n");
+  }
+  fflush(stdout);
+  
+  View::wait();
+  return 0;
   // assemble and solve the finite element problem
   LinSystem sys(&wf, &umfpack, &space);
   sys.assemble();
