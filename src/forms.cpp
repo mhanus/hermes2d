@@ -15,6 +15,12 @@
 
 #include "forms.h"
 
+template<typename T>
+const char* Func<T>::ERR_UNDEFINED_NEIGHBORING_ELEMENTS = "Neighboring elements are not defined and so are not function traces on their interface. "
+                                                          "Did you forget setting H2D_ANY_INNER_EDGE in add_matrix/vector_form?";
+template<typename T> 
+T DiscontinuousFunc<T>::zero = T(0);
+
 // Integration order for coordinates, normals and tangents is one
 Geom<Ord>* init_geom_ord()
 {
@@ -107,8 +113,8 @@ Func<double>* init_fn(PrecalcShapeset *fu, RefMap *rm, const int order)
   int np = quad->get_num_points(order);
   Func<double>* u = new Func<double>(np, nc);
 
-  // H1 space
-  if (space_type == 0)
+  // H1 or L2 space.
+  if (space_type == 0 || space_type == 3)
   {
 		u->val = new double [np];
 		u->dx  = new double [np];
@@ -149,7 +155,7 @@ Func<double>* init_fn(PrecalcShapeset *fu, RefMap *rm, const int order)
 #endif
 		}
 	}
-  // Hcurl space
+  // Hcurl space.
 	else if (space_type == 1)
   {
     u->val0 = new double [np];
@@ -168,7 +174,7 @@ Func<double>* init_fn(PrecalcShapeset *fu, RefMap *rm, const int order)
       u->curl[i] = ((*m)[0][0] * (*m)[1][1] - (*m)[1][0] * (*m)[0][1]) * (dx1[i] - dy0[i]);
     }
 	}
-  // Hdiv space
+  // Hdiv space.
   else if (space_type == 2)
   {
     u->val0 = new double [np];
@@ -182,12 +188,6 @@ Func<double>* init_fn(PrecalcShapeset *fu, RefMap *rm, const int order)
       u->val0[i] = (  fn0[i] * (*m)[1][1] - fn1[i] * (*m)[1][0]);
       u->val1[i] = (- fn0[i] * (*m)[0][1] + fn1[i] * (*m)[0][0]);
     }
-  }
-  // L2 space
-  else if (space_type == 3)
-  {
-    u->val = new double [np];
-    memcpy(u->val, fu->get_fn_values(), np * sizeof(double));
   }
   else
     error("Wrong space type - space has to be either H1, Hcurl, Hdiv or L2");
