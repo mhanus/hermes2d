@@ -508,22 +508,32 @@ void Space::precalculate_projection_matrix(int nv, double**& mat, double*& p)
 
 void Space::update_edge_bc(Element* e, EdgePos* ep)
 {
+  bool is_L2 = (get_type() == 3);
   if (e->active)
   {
     Node* en = e->en[ep->edge];
     NodeData* nd = &ndata[en->id];
+    ElementData* ed = &edata[e->id]; // For L2.
+    
     nd->edge_bc_proj = NULL;
 
     if (nd->dof != H2D_UNASSIGNED_DOF && en->bnd && bc_type_callback(en->marker) == BC_ESSENTIAL)
     {
-      int order = get_edge_order_internal(en);
+      // Get the order of shape functions at given edge:
+      //   for H1, it is either the horizontal or the vertical (depending on the edge) order of the element since the edge shape functions are indexed as 1D polynomials,
+      //   for L2 and quadrilateral e, it is the encoded compound order of the element since the bubble shape functions that are used to obtain the edge values are indexed as 2D polynomials.
+      int order = is_L2 ? ed->order : get_edge_order_internal(en);
+      
       ep->marker = en->marker;
       nd->edge_bc_proj = get_bc_projection(ep, order);
       extra_data.push_back(nd->edge_bc_proj);
 
-      int i = ep->edge, j = e->next_vert(i);
-      ndata[e->vn[i]->id].vertex_bc_coef = nd->edge_bc_proj + 0;
-      ndata[e->vn[j]->id].vertex_bc_coef = nd->edge_bc_proj + 1;
+      // There are no vertex shape functions in L2.
+      if (!is_L2) {
+        int i = ep->edge, j = e->next_vert(i);
+        ndata[e->vn[i]->id].vertex_bc_coef = nd->edge_bc_proj + 0;
+        ndata[e->vn[j]->id].vertex_bc_coef = nd->edge_bc_proj + 1;
+      }
     }
   }
   else

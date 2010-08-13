@@ -37,7 +37,7 @@ public:
   virtual int get_type() const { return 3; }
 
   virtual void get_element_assembly_list(Element* e, AsmList* al);
-
+  
 protected:
 
   struct L2Data
@@ -57,10 +57,24 @@ protected:
 
   virtual void get_vertex_assembly_list(Element* e, int iv, AsmList* al) {}
   virtual void get_edge_assembly_list_internal(Element* e, int ie, AsmList* al);
+  virtual void get_boundary_assembly_list(Element* e, int ie, AsmList* al);
   virtual void get_bubble_assembly_list(Element* e, AsmList* al);
-
+  
+  /// Project the boundary condition at given edge onto a space spanned by shape functions with non-zero values on that edge
+  /// (these are in fact all the bubble functions spanning our discrete L2), using the edge-wise L2 inner product. 
+  /// Returns coefficients of the linear combination of the shape functions that defines the projected boundary condition function.
   virtual scalar* get_bc_projection(EdgePos* ep, int order);
-
+      
+  /// Precalculates Cholesky decomposition of the projection matrix used for projecting boundary conditions.
+  /// Currently, it does that for both the reference triangle and quad (see the comment in the function body).
+  virtual void precalculate_projection_matrix(int mode);
+  
+  /// Arrays storing the Cholesky decomposition data (currently for both element types and every edge).
+  static double** l2_proj_mat[2][4];
+  static double*  l2_chol_p[2][4];
+  
+  /// Number of spaces that use the single precomputed Cholesky decomposition for quad / triangle.
+  static int      l2_proj_ref[2]; 
 };
 
 

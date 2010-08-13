@@ -271,7 +271,7 @@ protected: //debugging support
   double*  chol_p;
 
   void copy_callbacks(const Space* space);
-  void precalculate_projection_matrix(int nv, double**& mat, double*& p);
+  virtual void precalculate_projection_matrix(int nv, double**& mat, double*& p);
   virtual scalar* get_bc_projection(EdgePos* ep, int order) = 0;
   void update_edge_bc(Element* e, EdgePos* ep);
 
