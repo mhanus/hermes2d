@@ -6,6 +6,7 @@
 #include "quad.h"
 #include "solution.h"
 #include "forms.h"
+#include "refmap.h"
 
 
 /*!\class NeighborSearch neighbor.h "src/neighbor.h"
@@ -29,8 +30,19 @@
 
  * For numbering and ordering of edges, vertices and sons of an element look into mesh.cpp
  */
+/*
+enum NeighboringShapesets { 
+  DG_UC_VC,  ///< central element's basis function, central element's test function
+  DG_UC_VN,  ///< central element's basis function, neighboring element's test function
+  DG_UN_VC,  ///< neighboring element's basis function, central element's test function
+  DG_UN_VN   ///< neighboring element's basis function, neighboring element's test function
+};
 
-
+enum NeighboringElements{
+  DG_CENTRAL,  
+  DG_NEIGHBOR 
+};
+*/
 class H2D_API NeighborSearch
 {
 public:
@@ -39,7 +51,7 @@ public:
 	* If he wants also function values, he must provide a MeshFunction (solution).
 	*  The space is for improvement of the algorithm for choosing the order on the edge. Both, solution and space, have to be defined over the given mesh.
 	*/
-	NeighborSearch(Element* e, Mesh* mesh, MeshFunction* sln = NULL, Space* space = NULL);
+	NeighborSearch(Element* e, Space* space);
 
 	~NeighborSearch();
 
@@ -51,92 +63,142 @@ public:
 	int get_number_of_neighbs();
 
 	//! Return array of transformations of neighbor or central element.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	int* get_transformations(int part_edge);
-
-	//! Return function values of neighbor at integration points.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	scalar* get_fn_values_neighbor(int part_edge);
-
-	//! Return function values of central element at integration points.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	scalar* get_fn_values_central(int part_edge);
-
-	//! Return pointer to function which contains all information from central.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	Func<scalar>* get_values_central(int part_edge);
-
-	//! Return pointer to function which contains all information from neighbor.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	Func<scalar>* get_values_neighbor(int part_edge);
-
-
+	// \param[in] active_segment Corresponding to the number of neighbor in direction we are enumerate them.
+	int* get_transformations(int active_segment);
+/*
 	//! Return number of integration points.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	int get_n_integ_points(int part_edge);
-
+	// \param[in] active_segment Corresponding to the number of neighbor in direction we are enumerate them.
+	int get_n_integ_points(int active_segment);
+*/
 	//! Return pointer to the vector of neighbors id.
-	std::vector<int>* get_neighbors();
+	std::vector<Element*>* get_neighbors();
 
 	//! Return local number of neighbor edge.
-	// \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
-	int get_number_neighb_edge(int part_edge);
+	// \param[in] active_segment Corresponding to the number of neighbor in direction we are enumerate them.
+	int get_number_neighb_edge(int active_segment);
 
 	//! Return orientation of neighbor edge.
-	//! \param[in] part_edge Corresponding to the number of neighbor in direction we are enumerate them.
+	//! \param[in] active_segment Corresponding to the number of neighbor in direction we are enumerate them.
 	//! \return Return 0 if the orientation of the common edge is same on the neighbor element as on the central element.
 	//! \return If not than the returned integer is equal to 1.
-	int get_orientation_neighb_edge(int part_edge);
+	int get_orientation_neighb_edge(int active_segment);
 
-	//! Returns a vector where each member contains maximum of orders of central and neighbor element.
-	std::vector<int>* get_orders();
-
-	//! Set the order of the integration.
-	//! \param[in] order The order for which you want get function values at integration points.
-	void set_order_of_integration(int order);
-
-	//! Set MeshFunction (solution), this method is used in case you want to get values of different solutions over the same edge.
-	//! Don't have to make another instance of the class.
-	void set_solution(MeshFunction* solution);
-
-
+  
+  /*! Fill function values / derivatives for the central element and one of its neighbors.
+  * \param[in] flag Determines whether transformations will be applied to the central or to the neighbor element.
+  * \param[in] active_segment Part of the active edge shared by the central element and selected neighbor (corresponds to how the neighbors have been enumerated in set_active_edge). 
+  */
+  DiscontinuousFunc<scalar>* init_ext_fn(MeshFunction* fu, int order);
+  DiscontinuousFunc<Ord>* init_ext_fn_ord(MeshFunction* fu);
+  
+/*  
+  Func< scalar >* get_fn_central() { return fn_central; }
+  Func< scalar >* get_fn_neighbor() { return fn_neighbor; }
+*/  
+  void set_active_segment(int segment);
+  int enumerate_neighboring_shapes(AsmList* al);
+  
+    
+  class NeighborhoodAssemblyInfo
+  {
+    public:
+      int cnt;
+      int *dof;
+    
+    private:
+      NeighborhoodAssemblyInfo() {
+        assert(central_al != NULL && neighbor_al != NULL);
+        
+        cnt = central_al->cnt + neighbor_al->cnt;
+        dof = new int [cnt];
+        memcpy(dof, central_al->dof, sizeof(int)*central_al->cnt);
+        memcpy(dof + central_al->cnt, neighbor_al->dof, sizeof(int)*neighbor_al->cnt);
+      }
+      
+      ~NeighborhoodAssemblyInfo() {  delete [] dof; }
+  };
+     
+  class ExtendedShapeFunction
+  {
+    private:
+      PrecalcShapeset *spss;
+      RefMap *rm;
+      
+      int order;
+      bool support_on_neighbor;
+      
+      ExtendedShapeFunction() : pss(NULL), rm(NULL), 
+                                idx(-1), dof(-1), coef(-1), order(-1), 
+                                original_transform(0), support_on_neighbor(false) {};
+                                
+      ~ExtendedShapeFunction() { 
+        if (pss != NULL) delete pss; if (rm != NULL) delete rm; 
+      }
+      
+    public:      
+      int idx;      ///< shape function index
+      int dof;      ///< basis function number
+      scalar coef;  ///< coefficient
+      
+      void attach(PrecalcShapeset* pss);
+      void activate(int index);
+      
+      RefMap* get_refmap() { return rm; }
+      PrecalcShapeset* get_pss() { return spss; }
+  };
+  
+  NeighborhoodAssemblyInfo *neighboring_shapes; 
+  ExtendedShapeFunction active_shape;
+  
 private:
-	const static int max_n_trans = 20;    //!< Number of allowed transformations, see "push_transform" in transform.h.
+  static const char* ERR_ACTIVE_SEGMENT_NOT_SET;
+	static const int max_n_trans;    //!< Number of allowed transformations, see "push_transform" in transform.h.
 
 	int n_neighbors; //!< Number of neighbors.
-	Quad2D* quad;
+	
 	Mesh* mesh;
+  Space* space;
 	Element* central_el; //!< Central element.
 	Element* neighb_el;  //!< Actual neighbor element we are working with,
-	MeshFunction* sol;
-	Space* space;
+  AsmList* central_al;
+  AsmList* neighbor_al;
+     
 	int transformations[max_n_trans][max_n_trans];	//!< Table of transformations for all neighbors.
-	int n_trans[max_n_trans];  //!< Number of transformations for every neighbor.
-	int active_edge;			     //!< Edge where we are searching for neighbors.
-	int neighbor_edge;		   	//!< Edge of the working neighbor corresponding to active_edge.
-	scalar* fn_values[max_n_trans]; //!< Function values for central element.
-	scalar* fn_values_neighbor[max_n_trans]; //!< Function values for all neighbor elements.
-	int np[max_n_trans];						//!< Number of integration points for every neighbor.
+	int n_trans[max_n_trans]; //!< Number of transformations for every neighbor.
+	int active_edge;          //!< Edge where we are searching for neighbors.
+	int neighbor_edge;        //!< Edge of the working neighbor corresponding to active_edge.
+  int active_segment;
+/*
+	int np[max_n_trans];      //!< Number of integration points for every neighbor.
+  
 	int central_order;  //!< Order of the MeshFunction on central element.
 	int neighbor_order; //!< Order of the MeshFunction on the working neighbor element.
 
-	/*! \var
-	 * This has two meanings. First it is a flag if the user for setting the order of integration used method set_order_of_integration().
-	 * Initial, in the constructor, set equal to -1, else is equal to the order get from the method.
-	 */
-	int max_of_orders;
+	//! \var
+	//  This has two meanings. First it is a flag if the user for setting the order of integration used method set_order_of_integration().
+	//  Initial, in the constructor, set equal to -1, else is equal to the order get from the method.
+	 
+	int active_edge_order;
+*/
 	int way_flag; //!< This flag holds which way was used on the active edge. So is equal to one of the members of Trans_flag.
 
 
+	std::vector<Element*> neighbors; //!<  Vector containing pointers to  all neighbors. 
+  
+/*
+  std::vector<scalar*> fn_values_central;   //!< Vector of function values for central element at all parts of the active edge.
+  std::vector<scalar*> fn_values_neighbor;  //!< Vector of function values for all neighbor elements (correspond to the values at the same vector index in fn_values_central).
+*/
 
-	std::vector<int> neighbors_id; //!<  Vector containing id's of all neighbors. (obsolete)
-	std::vector<Element*> neighbors; //!<  Vector containing pointers to  all neighbors.
-	std::vector<int> orders; //!< Each member of this vector contains maximum of orders of central and neighbor element.
-
-	//! Vectors of all values (function, derivatives, etc.) for central and neighbor elements.
-	std::vector<Func<scalar>*> values_central;
-	std::vector<Func<scalar>*> values_neighbor;
-
+  /*! This serves for distinguish which way was used for finding neighbors and according the way how are obtain values in method
+  * set_fn_values().
+  */
+  enum Trans_flag{
+    H2D_NO_TRANSF = 0,  //!< Don't use any transformation, the edge has on both sides active element.
+    H2D_WAY_DOWN = 1,   //!< Transformation of central element, against the edge neighbor has some sons.
+    H2D_WAY_UP = 2      //!< Transformation of neighbor element, central element is son.
+  };
+  
 	//! Method "way up" for finding neighbor element, from smaller to larger.
 	/*!
 	 * \param[in] elem The pointer to parent element of the element from previous step.
@@ -157,33 +219,30 @@ private:
 	 */
 	void finding_act_elem_down( Node* vertex, int* par_vertex_id, int* road, int n_road);
 
+/*
 	//! Setting the sequence of function values of neighbor in same direction as on central element.
 	void set_correct_direction(int index);
 
-	//! Set order of the working edge. Depends on if the space is given.
-	int get_max_order();
-
-  /*! Method for getting an order on the working edge. Originally taken from class Space.
+  
+  /*! Get an approximation order on the working edge according to the maximum rule (adapted from Space::get_edge_order_internal).
    *	\param[in] e Element with which we are working.
    *	\param[in] edge Local edge number of the element e.
-   * \return The order of the edge.
-   */
-	int get_edge_order(Element* e, int edge);
-
-	/*! Helping method for get_edge_order().
-   * \param[in] en Edge node whose order we want to find.
-   * \return The order of the edge.
-   */
-	int get_edge_order_internal(Node* en);
-
+   *  \return The order of the edge.
+   *
+int get_edge_order_internal(Element* e, int edge);
+*/  
+  int make_edge_order(int encoded_order); 
+  
+/*
   /*! Just reverse values in vector.
    * \param[in] vector The pointer to array in which we will reverse values.
    * \param[in] n Length of the vector.
-   */
+   *
 	void reverse_vector(scalar* vector, int n);
-
+*/
   //! Structure containing all needed information about neighbor's edge. Initial values of both members are invalid.
-	struct NeighborEdgeInfo{
+	struct NeighborEdgeInfo
+  {
 		NeighborEdgeInfo(){
 			local_num_of_edge = -1;
 			orientation = -1;
@@ -197,45 +256,31 @@ private:
     */
 		int orientation;
 	};
+  
+  //! Vector containing all neighbor edges information corresponding to active edge.
+  std::vector<NeighborEdgeInfo> neighbor_edges;
+  
 
 	/*! Find the orientation of the neighbor edge in relation with the active edge. All input paramaters depend on in which way we
    * we are. For all ways parent1 and parent2 are ids of vertices oriented in same direction as are vertices of central element.
-   * Parameter part_of_edge is 0 or 1 and actualy is used only in way down. In other ways is set to 0.
+   * Parameter active_segment is 0 or 1 and actualy is used only in way down. In other ways is set to 0.
    * For way up parameters parent1 and parent2 are vertices which define the edge of inactive parent of central element. The edge has on other
    * side active neighbor.
    * For way down parent1 and parent2 are vertices of the edge, which is part of active edge. Both vertices belong to direct parent element
    * of active neighbor element. This means that one of them for sure belongs to active neighbor. The second vertex serves for finding the other(middle) vertex
    * which define neighbor edge corresponding to active edge.
-   * Parameter part_of_edge is 0 if the neighbor edge of active neighbor has vertices parent1 and middle vertex and equal to 1 if the vertices which define
+   * Parameter active_segment is 0 if the neighbor edge of active neighbor has vertices parent1 and middle vertex and equal to 1 if the vertices which define
    * the neighbor edge are middle vertex and parent2.
    * \param[out] edge_info The relative orientation is copied into the struct NeighborEdgeInfo.
    */
-	int direction_neighbor_edge(int parent1, int parent2, int part_of_edge);
+	int direction_neighbor_edge(int parent1, int parent2);
 
-	// cleaning before usage of given edge
-	void clean_all();
-
-	/*! This serves for distinguish which way was used for finding neighbors and according the way how are obtain values in method
-   * set_fn_values().
-   */
-	enum Trans_flag{
-		H2D_NO_TRANSF = 0,  //!< Don't use any transformation, the edge has on both sides active element.
-		H2D_WAY_DOWN = 1, 	//!< Transformation of central element, against the edge neighbor has some sons.
-		H2D_WAY_UP = 2			//!< Transformation of neighbor element, central element is son.
-	};
-
-	/*! Fill function values / derivatives for the central element and one of its neighbors.
-   * \param[in] flag Determines whether transformations will be applied to the central or to the neighbor element.
-   * \param[in] neigh Determines the neighboring element.
-   */
-	void set_fn_values(Trans_flag flag, int neigh);
-
-	//! Vector containing all neighbor edges information corresponding to active edge.
-	std::vector<NeighborEdgeInfo> neighbor_edges;
-
-	//! This method serves for fill all values of central and all neighbors elements.
-	void compute_fn_values();
-
+  //! Clears the vectors holding arrays of function values and pointers to Func instances for neighboring elements by calling the corresponding deallocators.
+  //! This does not alter the capacity of the vectors reserved in constructor.
+  //void clear_value_vectors();
+  
+  //! Cleaning of internal structures before a new edge is set as active.
+  void reset_neighb_info();
 };
 
 

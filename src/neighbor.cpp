@@ -1,60 +1,142 @@
 #include "neighbor.h"
 
-NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given_sln, Space* given_space)
+const char* NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET = "Active segment of the active edge has not been set.";
+const int NeighborSearch::max_n_trans = 20;
+
+/*NeighborSearch::NeighborSearch(Element* e, Mesh* given_mesh, MeshFunction* given_sln, Space* given_space)
 {
 	central_el = e;
 	mesh = given_mesh;
-	sol = given_sln;
+	function = given_sln;
 	space = given_space;
-	if(sol != NULL){
-		quad = sol->get_quad_2d();
-		sol->set_active_element(central_el);
-		central_order = sol->get_fn_order();
+	if(function != NULL){
+		quad = function->get_quad_2d();
+		function->set_active_element(central_el);
+		central_order = function->get_fn_order();
 	}
 	else{
 		quad = NULL;
 		central_order = -1;
 	}
-	for(int i = 0;  i < max_n_trans; i++)
-	{
-		fn_values[i] = NULL;
-		fn_values_neighbor[i] = NULL;
-	}
 
-	max_of_orders = -1;
+	common_edge_order = -1;
 
 	n_neighbors = 0;
-	neighbors_id.reserve(20 * e->nvert);
-	neighbors.reserve(20);
-	values_central.reserve(20);
-	values_neighbor.reserve(20);
-
-	neighbor_edges.reserve(20);
+	neighbors_id.reserve(max_n_trans * e->nvert);
+	neighbors.reserve(max_n_trans);
+  neighbor_edges.reserve(max_n_trans);
+  
+	fn_central.reserve(max_n_trans);
+	fn_neighbor.reserve(max_n_trans);
+  fn_values_central.reserve(max_n_trans);
+  fn_values_neighbor.reserve(max_n_trans);
 };
+*/
 
+NeighborSearch::ExtendedShapeFunction::attach(PrecalcShapeset* pss)
+{ 
+  spss = new PrecalcShapeset(pss);
+  rm = new RefMap(); //NOTE: RefMap object with default quadrature is created. 
+                     // The same quadrature is assigned to refmaps in LinSystem::assembly(), but in case it is changed, 
+                     // it should be reflected here by manually setting it for the local refmap as well.
+}
+
+void NeighborSearch::ExtendedShapeFunction::activate(int index)
+{
+  assert_msg(active_segment != -1, NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET);
+  assert_msg(index >= 0, "Wrong shape function index.");
+  assert_msg(spss != NULL && rm != NULL, "Cannot activate a shape before the PrecalcShapeset is attached.");
+
+  spss->set_master_transform();
+  
+  if (index >= central_al->cnt) 
+  {
+    if (spss->get_active_element() != neighb_el) {
+      spss->set_active_element(neighb_el);
+      rm->set_active_element(neighb_el);
+    }
+    
+    if (way_flag == H2D_WAY_UP) {
+      for(int i = 0; i < n_trans[active_segment]; i++)
+        spss->push_transform(transformations[active_segment][i]);
+      rm->force_transform(spss->get_transform(), spss->get_ctm());
+    }
+    
+    int idx_loc = index - central_al->cnt;
+    idx = neighb_al->idx[idx_loc];
+    dof = neighb_al->dof[idx_loc];
+    coef = neighb_al->coef[idx_loc];
+    
+    spss->set_active_shape(idx);
+    support_on_neighbor = true;
+  } 
+  else 
+  {
+    if (spss->get_active_element() != central_el) {
+      spss->set_active_element(central_el);
+      rm->set_active_element(central_el);
+    }
+    
+    if (way_flag == H2D_WAY_DOWN) {
+      for(int i = 0; i < n_trans[active_segment]; i++)
+        spss->push_transform(transformations[active_segment][i]);
+      rm->force_transform(spss->get_transform(), spss->get_ctm());  //TODO: myslim, ze by to melo byt rychlejsi nez sekvence push_transform, 
+                                                                    // i kdyz se tu znovu pocita const_inv_ref_map (poprve v set_active_element).  
+    }
+    
+    idx = central_al->idx[index];
+    dof = central_al->dof[index];
+    coef = central_al->coef[index];
+    
+    spss->set_active_shape(idx);
+    support_on_neighbor = false;
+  }
+  
+  support_on_neighbor = (supporting_element != central_el);
+  int inc = (spss->get_num_components() == 2) ? 1 : 0; // FIXME: timhle si nejsem moc jistej
+  order = make_edge_order(spss->get_shapeset()->get_order(spss->get_active_shape())) + inc;
+  
+}
+
+
+
+// Get the shapeset function orders.
+int NeighborSearch::make_edge_order(int encoded_order)
+{ 
+  assert_msg(active_edge != -1, "Active edge has not been set.");
+  
+  if (central_el->is_triangle() || active_edge == central_el->en[0] || active_edge == central_el->en[2])
+    return H2D_GET_H_ORDER(encoded_order);
+  else
+    return H2D_GET_V_ORDER(encoded_order);
+}
+
+NeighborSearch::NeighborSearch(Element* e, Space* space) : central_el(e), space(space), mesh(space->get_mesh())
+{
+  neighbors.reserve(max_n_trans);
+  neighbor_edges.reserve(max_n_trans);
+}; 
+ 
 
 NeighborSearch::~NeighborSearch()
 {
-	for(int i = 0; i < max_n_trans; i++){
-		if(fn_values[i] != NULL)
-			delete[] fn_values[i];
-		if(fn_values_neighbor[i] != NULL)
-			delete[] fn_values_neighbor[i];
-	}
-
-	values_central.clear();
-	values_neighbor.clear();
+  /*
+    //fn_central.clear();
+    //fn_neighbor.clear();
+    //clear_value_vectors();
+  */
 	neighbor_edges.clear();
-	orders.clear();
+	//orders.clear();
 	neighbors.clear();
+  if (neighboring_shapes != NULL) delete neighboring_shapes;
 };
 
 
 void NeighborSearch::set_active_edge(int edge)
 {
 	// Erase all data from previous edge or element.
-	clean_all();
-
+	reset_neighb_info();
+  
 	active_edge = edge;
 
 	debug_log("central element: %d", central_el->id);
@@ -89,15 +171,11 @@ void NeighborSearch::set_active_edge(int edge)
 			// There is only one neighbor in this case.
 			n_neighbors = 1;
 
-			// Add neighbor id to neighbors_id.
-			neighbors_id.push_back(neighb_el->id);
+			// Add neighbor to the neighbors vector.
 			neighbors.push_back(neighb_el);
 			
 			// No need for transformation, since the neighboring element is of the same size.
 			way_flag = H2D_NO_TRANSF;
-			
-			if(sol != NULL)
-				compute_fn_values();
 		} 
 		else
 		{
@@ -123,9 +201,6 @@ void NeighborSearch::set_active_edge(int edge)
 				delete[] road_vertices;
 
 				way_flag = H2D_WAY_UP;
-				
-				if(sol != NULL)
-						compute_fn_values();
 			} 
 			else
 			{
@@ -136,10 +211,7 @@ void NeighborSearch::set_active_edge(int edge)
 				finding_act_elem_down( vertex, orig_vertex_id, road, n_road);
 
 				way_flag = H2D_WAY_DOWN;
-				
-				if(sol != NULL)
-						compute_fn_values();
-				
+        
 				debug_log("number of neighbors on the way down: %d ", n_neighbors);
 			}
 		}
@@ -270,8 +342,7 @@ void NeighborSearch::finding_act_elem_up( Element* elem, int* orig_vertex_id, No
 				// There is only one neighbor.
 				n_neighbors = 1;
 
-				// Add neighbors to their respective vectors.
-				neighbors_id.push_back(neighb_el->id);
+				// Add neighbor to the neighbors vector.
 				neighbors.push_back(neighb_el);
 			}
 		}
@@ -352,7 +423,6 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 							n_neighbors = n_neighbors++;
 
 							// Add neighbors to vectors.
-							neighbors_id.push_back(neighb_el->id);
 							neighbors.push_back(neighb_el);
 					}
 			}
@@ -360,192 +430,106 @@ void NeighborSearch::finding_act_elem_down( Node* vertex, int* par_vertex_id, in
 	}
 };
 
+void NeighborSearch::set_active_segment(int segment)
+{
+  active_segment = segment;
+  neighb_el = neighbors[active_segment];
+  neighbor_edge = neighbor_edges[active_segment].local_num_of_edge;
+}
+
+int NeighborSearch::enumerate_neighboring_shapes(AsmList* al)
+{
+  assert_msg(active_segment != -1, NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET);
+  
+  central_al = al;
+  space->get_edge_assembly_list(neighb_el, neighbor_edge, neighbor_al);
+  
+  if (neighboring_shapes != NULL) delete neighboring_shapes;
+  neighboring_shapes = new NeighborSearch::NeighborhoodAssemblyInfo();
+}
+
 /*! \brief Fill function values / derivatives for the central element and one of its neighbors.
  *
  */
-
-void NeighborSearch::set_fn_values(Trans_flag flag, int neigh)
+//NOTE: This is not very efficient, since it sets the active elements and possibly pushes transformations
+// for each mesh function in each cycle of the innermost assembly loop. This is neccessary because only in
+// this innermost cycle (in function LinSystem::eval_form), we know the quadrature order (dependent on 
+// the actual basis and test function), which is needed for creating the Func<scalar> objects via init_fn.
+// The reason for storing the central and neighbor values of any given function in these objects is that otherwise
+// we would have to have one independent copy of the function for each of the neighboring elements. However, it 
+// could unify the way PrecalcShapesets and MeshFunctions are treated in NeighborSearch and maybe these additional 
+// deep memory copying, performed only after setting the active edge part (before the nested loops over basis and 
+// test functions), would be actually more efficient than this. This would require implementing the copy operation for Filters.
+DiscontinuousFunc<scalar>* NeighborSearch::init_ext_fn(MeshFunction* fu, int order)
 {
+  assert_msg(active_segment != -1, NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET);
+    
+  Quad2D* quad = fu->get_quad_2d();
+  
+  fu->set_active_element(neighb_el);
+  
+  if (way_flag == H2D_WAY_UP) 
+    // Transform neighbor element on appropriate part.
+    for(int i = 0; i < n_trans[active_segment]; i++)        
+      fu->push_transform(transformations[active_segment][i]);
+      
+  int eo = quad->get_edge_points(neighbor_edge,order);
+  fu->set_quad_order(eo);  
+  Func<scalar>* fn_neighbor = init_fn(fu, fu->get_refmap(), eo);
+  /*    
+  // TODO: Should we keep this? We can get the function values from fn_neighbor...
+  assert(number_integ_points == quad->get_num_points(eo));  
+  fn_values_neighbor = new scalar[number_integ_points];
+  for(int i = 0; i < number_integ_points; i++) fn_values_neighbor[i] = fu->get_fn_values()[i];
+  */    
 
-	int number_integ_points = 0;
+  fu->set_active_element(central_el);
+  
+  if (way_flag == H2D_WAY_DOWN)
+    // Transform central element on appropriate part.
+    for(int i = 0; i < n_trans[active_segment]; i++)
+      fu->push_transform(transformations[active_segment][i]);
+  
+  eo = quad->get_edge_points(active_edge, order); 
+  fu->set_quad_order(eo);
+  Func<scalar>* fn_central = init_fn(fu, fu->get_refmap(), eo);
+/*    
+  // TODO: Should we keep this? We can get the function values from fn_central...
+  number_integ_points = quad->get_num_points(eo);
+  fn_values_central = new scalar[number_integ_points];
+  for(int i = 0; i < number_integ_points; i++) fn_values_central[i] = fu->get_fn_values()[i];
+*/  
 
-	switch(flag)
-	{
-		case H2D_NO_TRANSF:
-			{
-				sol->set_active_element(neighb_el);
+  // Reset transformations.
+  fu->set_transform(original_transform);
 
-				int max_order;
-				if (max_of_orders == -1)
-				{
-					neighbor_order = sol->get_fn_order();
-					max_order = get_max_order();
-				}
-				else
-					max_order = max_of_orders;
+  return new DiscontinuousFunc<scalar>(fn_central, fn_neighbor, (neighbor_edges[active_segment].orientation == 1));    
+}
 
-				orders.push_back(max_order);
+DiscontinuousFunc<Ord>* NeighborSearch::init_ext_fn_ord(MeshFunction* fu)
+{   
+  assert_msg(active_segment != -1, NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET);
+  
+  int central_order, neighbor_order;
+  
+  if (fn->get_type() == SLN && space != NULL) {
+    central_order = make_edge_order( space->edata[central_el->id].order ); 
+    neighbor_order = make_edge_order( space->edata[neighb_el->id].order );    
+  } else {
+    central_order = neighbor_order = fu->get_fn_order();
+  }
+  
+  return new DiscontinuousFunc<Ord>(init_fn_ord(central_order), init_fn_ord(neighbor_order));
+}
 
-				int eo = quad->get_edge_points(neighbor_edge, max_order);
-				number_integ_points = quad->get_num_points(eo);
-
-				scalar* local_fn_values_n = new scalar[number_integ_points];
-				scalar* local_fn_values_c = new scalar[number_integ_points];
-
-				// Fill function values of neighbor.
-				sol->set_quad_order(eo);
-
-				RefMap* rm = sol->get_refmap();
-				Func<scalar>* func;
-				func = init_fn(sol, rm, eo);
-				values_neighbor.push_back(func);
-
-				for(int i = 0; i < number_integ_points ; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
-				fn_values_neighbor[neigh] = local_fn_values_n;
-
-
-				// Fill the central.
-
-				sol->set_active_element(central_el);
-				eo = quad->get_edge_points(active_edge, max_order);
-				sol->set_quad_order(eo);
-				for(int i = 0; i < number_integ_points ; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
-				fn_values[neigh] = local_fn_values_c;
-
-				Func<scalar>* func1;
-				func1 = init_fn(sol, rm, eo);
-				values_central.push_back(func1);
-
-
-				break;
-			}
-		case H2D_WAY_DOWN:
-			{
-			sol->set_active_element(neighb_el);
-
-			int max_order;
-
-			if (max_of_orders == -1)
-			{
-				neighbor_order = sol->get_fn_order();
-				max_order = get_max_order();
-			}
-			else
-				max_order = max_of_orders;
-
-			orders.push_back(max_order);
-
-			int eo = quad->get_edge_points(neighbor_edge, max_order);
-			number_integ_points = quad->get_num_points(eo);
-
-			scalar* local_fn_values_c = new scalar[number_integ_points];
-			scalar* local_fn_values_n = new scalar[number_integ_points];
-
-			// Fill function values of neighbor element.
-
-			sol->set_quad_order(eo);
-			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
-			fn_values_neighbor[neigh] = local_fn_values_n;
-
-			RefMap* rm = sol->get_refmap();
-			Func<scalar>* func;
-			func = init_fn(sol, rm, eo);
-			values_neighbor.push_back(func);
-
-			// Fill the central element.
-
-			sol->set_active_element(central_el);
-
-			// Transform central element on appropriate part.
-			for(int i = 0; i < n_trans[neigh]; i++){
-				sol->push_transform(transformations[neigh][i]);
-			}
-			eo = quad->get_edge_points(active_edge, max_order);
-			sol->set_quad_order(eo);
-			for(int i = 0; i < number_integ_points; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
-			fn_values[neigh] = local_fn_values_c;
-
-			Func<scalar>* func1;
-			func1 = init_fn(sol, rm, eo);
-			values_central.push_back(func1);
-
-			break;
-			}
-		case H2D_WAY_UP:
-			{
-			sol->set_active_element(neighb_el);
-
-			// Transform neighbor element on appropriate part.
-			for(int i = 0; i < n_trans[neigh]; i++){
-				sol->push_transform(transformations[neigh][i]);
-			}
-
-			int max_order;
-
-			if (max_of_orders == -1)
-			{
-				neighbor_order = sol->get_fn_order();
-				max_order = get_max_order();
-			}
-			else
-				max_order = max_of_orders;
-
-			orders.push_back(max_order);
-
-			int eo = quad->get_edge_points(neighbor_edge, max_order);
-			number_integ_points = quad->get_num_points(eo);
-
-			scalar* local_fn_values_c = new scalar[number_integ_points];
-			scalar* local_fn_values_n = new scalar[number_integ_points];
-
-			// Fill function values of neighbor element.
-
-			sol->set_quad_order(eo);
-
-			for(int i = 0; i < number_integ_points; i++) local_fn_values_n[i] = sol->get_fn_values()[i];
-			fn_values_neighbor[neigh] = local_fn_values_n;
-
-			RefMap* rm = sol->get_refmap();
-			Func<scalar>* func;
-			func = init_fn(sol, rm, eo);
-			values_neighbor.push_back(func);
-
-			// Fill the central element.
-
-			sol->set_active_element(central_el);
-			eo = quad->get_edge_points(active_edge, max_order);
-			sol->set_quad_order(eo);
-			for(int i = 0; i < number_integ_points; i++) local_fn_values_c[i] = sol->get_fn_values()[i];
-			fn_values[neigh] = local_fn_values_c;
-
-			Func<scalar>* func1;
-			func1 = init_fn(sol, rm, eo);
-			values_central.push_back(func1);
-
-			break;
-			}
-		default:
-			error("wasn't find scheme for getting correctly transformed function values");
-	}
-
-
-	// Test if number of function values was assigned.
-	if(number_integ_points == 0)
-		error("number of integration points is 0");
-
-	np[neigh] = number_integ_points;
-
-	// Reset transformations.
-	sol->reset_transform();
-
-};
-
-// Here part_of_edge can be only 0 or 1. Different than 0 is meaningful only for way down.
+// Here active_segment can be only 0 or 1. Different than 0 is meaningful only for way down.
 // Fills the info about orientation into edge_info.
 
-int NeighborSearch::direction_neighbor_edge(int parent1, int parent2, int part_of_edge)
+int NeighborSearch::direction_neighbor_edge(int parent1, int parent2)
 {
-	if (part_of_edge == 0)
+  assert_msg(active_segment != -1, NeighborSearch::ERR_ACTIVE_SEGMENT_NOT_SET);
+  
+	if (active_segment == 0)
 	{
 		if (neighb_el->vn[neighbor_edge]->id != parent1)
 			return 1; // means the orientation is conversely
@@ -555,7 +539,7 @@ int NeighborSearch::direction_neighbor_edge(int parent1, int parent2, int part_o
 			return 1; // means the orientation is conversely
 	return 0;
 }
-
+/*
 void NeighborSearch::reverse_vector(scalar* vector, int n)
 {
 	scalar local_value;
@@ -571,205 +555,161 @@ void NeighborSearch::reverse_vector(scalar* vector, int n)
 
 void NeighborSearch::set_correct_direction(int index)
 {
-		scalar local_value = 0;
-		Func<scalar>* local_fun = values_neighbor[index];
+  scalar local_value = 0;
+  Func<scalar>* local_fun = fn_neighbor[index];
 
-		reverse_vector(fn_values_neighbor[index], np[index]);
+  reverse_vector(fn_values_neighbor[index], np[index]);
 
-		// change of the orientation for all values at local_fun.
-			if(local_fun->nc == 1){
-				reverse_vector(local_fun->val, np[index]);
-				reverse_vector(local_fun->dx, np[index]);
-				reverse_vector(local_fun->dy, np[index]);
-			}
-			else if(local_fun->nc == 2){
-				reverse_vector(local_fun->val0, np[index]);
-				reverse_vector(local_fun->val1, np[index]);
-				reverse_vector(local_fun->curl, np[index]);
-			}
+  // change of the orientation for all values at local_fun.
+  if(local_fun->nc == 1){
+    reverse_vector(local_fun->val, np[index]);
+    reverse_vector(local_fun->dx, np[index]);
+    reverse_vector(local_fun->dy, np[index]);
+  }
+  else if(local_fun->nc == 2){
+    reverse_vector(local_fun->val0, np[index]);
+    reverse_vector(local_fun->val1, np[index]);
+    reverse_vector(local_fun->curl, np[index]);
+  }
 };
-
-int NeighborSearch::get_max_order()
-{
-	if(space != NULL){
-		central_order = get_edge_order(central_el, active_edge);
-		neighbor_order = get_edge_order(neighb_el, neighbor_edge);
-	}
-		return std::max(central_order, neighbor_order);
-};
-
-
-
-void NeighborSearch::clean_all()
+*/
+void NeighborSearch::reset_neighb_info()
 {
 	active_edge = -1;
 
 	n_neighbors = 0;
 	neighb_el = NULL;
 	neighbor_edge = -1;
-	neighbor_order = -1;
 	way_flag = -1;
 
 	for(int i = 0; i < max_n_trans; i++)
 	{
 		n_trans[i] = 0;
 		np[i] = 0;
-		if(fn_values[i] != NULL)
-			delete[] fn_values[i];
-		if(fn_values_neighbor[i] != NULL)
-			delete[] fn_values_neighbor[i];
-
-		fn_values[i] = NULL;
-		fn_values_neighbor[i]	= NULL;
-
 		for(int j = 0; j < max_n_trans; j++)
 			transformations[i][j] = -1;
 	}
-	values_central.clear();
-	values_neighbor.clear();
+	
 	neighbor_edges.clear();
-	orders.clear();
+	//orders.clear();
 	neighbors.clear();
 };
 
+/*
+void NeighborSearch::clear_value_vectors()
+{
+  assert(fn_central.size() == fn_neighbor.size());
+  assert(fn_central.size() == fn_values_central.size());
+  assert(fn_central.size() == fn_values_neighbor.size());
+  for(int i = 0; i < fn_central.size(); i++) {
+    delete fn_central[i];
+    delete fn_neighbor[i];
+    delete[] fn_values_central[i];
+    delete[] fn_values_neighbor[i];
+  }
+  fn_central.clear();
+  fn_neighbor.clear();
+  fn_values_central.clear();
+  fn_values_neighbor.clear();
+}
 
-
+void NeighborSearch::clear_fns()
+{
+  if (fn_central != NULL) delete fn_central;
+  if (fn_values_central != NULL) delete [] fn_values_central;
+  if (fn_neighbor != NULL) delete fn_neighbor;
+  if (fn_values_central != NULL) delete [] fn_values_central;
+}
+*/
 int NeighborSearch::get_number_of_neighbs()
 {
 	if(n_neighbors == 0) error("called before setting common edge");
 	else return n_neighbors;
 };
 
-int* NeighborSearch::get_transformations(int part_edge)
+int* NeighborSearch::get_transformations(int active_segment)
 {
-	return transformations[part_edge];
+	return transformations[active_segment];
 };
 
-scalar* NeighborSearch::get_fn_values_central(int part_edge)
+/*
+int NeighborSearch::get_n_integ_points(int active_segment)
 {
-	return fn_values[part_edge];
+	return np[active_segment];
 };
-scalar* NeighborSearch::get_fn_values_neighbor(int part_edge)
-{
-	return fn_values_neighbor[part_edge];
-};
+*/
 
-Func<scalar>* NeighborSearch::get_values_central(int part_edge)
+std::vector<Element*>* NeighborSearch::get_neighbors()
 {
-	return values_central[part_edge];
-};
-
-Func<scalar>* NeighborSearch::get_values_neighbor(int part_edge)
-{
-	return values_neighbor[part_edge];
-};
-
-int NeighborSearch::get_n_integ_points(int part_edge)
-{
-	return np[part_edge];
+	return &neighbors;
 };
 
 
-std::vector<int>* NeighborSearch::get_neighbors()
+int NeighborSearch::get_number_neighb_edge(int active_segment)
 {
-	return &neighbors_id;
-};
-
-std::vector<int>* NeighborSearch::get_orders()
-{
-	return &orders;
-};
-
-
-int NeighborSearch::get_number_neighb_edge(int part_edge)
-{
-	if(part_edge >= neighbor_edges.size())
+	if(active_segment >= neighbor_edges.size())
 		error("given number is bigger than actual number of neighbors ");
 	else
-		return neighbor_edges[part_edge].local_num_of_edge;
+		return neighbor_edges[active_segment].local_num_of_edge;
 };
 
-int NeighborSearch::get_orientation_neighb_edge(int part_edge)
+int NeighborSearch::get_orientation_neighb_edge(int active_segment)
 {
-	if(part_edge >= neighbor_edges.size())
+	if(active_segment >= neighbor_edges.size())
 		error("given number is bigger than actual number of neighbors ");
 	else
-		return neighbor_edges[part_edge].orientation;
+		return neighbor_edges[active_segment].orientation;
 };
 
-
-// methods for getting order on the edge from space. Originally taken from class Space.
-
-int NeighborSearch::get_edge_order(Element* e, int edge)
+/*
+int NeighborSearch::get_edge_fn_order(PrecalcShapeset* first_shapesets_fn, PrecalcShapeset* second_shapesets_fn)
 {
-  Node* en = e->en[edge];
-  if (en->id >= space->nsize || edge >= (int)e->nvert) return 0;
+  // Compute edge order for the shapeset functions.
 
-  if (space->ndata[en->id].n == -1)
-    return get_edge_order_internal(space->ndata[en->id].base); // constrained node
-  else
-    return get_edge_order_internal(en);
+  Node* central_en = central_el->en[active_edge];
+  Node* neighb_en = neighb_el->en[neighbor_edge];
+  
+  int central_order, neighbor_order;
+  
+  switch (ns) {
+    case DG_UC_VC:
+      central_order = get_edge_order_internal(first_shapesets_fn,central_el,central_en);
+      neighbor_order = get_edge_order_internal(second_shapesets_fn,central_el,central_en);
+      break;
+    case DG_UC_VN:
+      central_order = get_edge_order_internal(first_shapesets_fn,central_el,central_en);
+      neighbor_order = get_edge_order_internal(second_shapesets_fn,neighb_el,neighb_en);
+      break;
+    case DG_UN_VC:
+      central_order = get_edge_order_internal(first_shapesets_fn,neighb_el,neighb_en);
+      neighbor_order = get_edge_order_internal(second_shapesets_fn,central_el,central_en);
+      break;
+    case DG_UN_VN:
+      central_order = get_edge_order_internal(first_shapesets_fn,neighb_el,neighb_en);
+      neighbor_order = get_edge_order_internal(second_shapesets_fn,neighb_el,neighb_en);
+      break;
+  }
+
+  return std::max(central_order, neighbor_order);
 }
-
-
-int NeighborSearch::get_edge_order_internal(Node* en)
+*/
+/* Get the element orders.
+int NeighborSearch::get_edge_order_internal(Element* e, Node *en)
 {
   assert(en->type == H2D_TYPE_EDGE);
-  Element** e = en->elem;
-  int o1 = 0, o2 = 0;
-  assert(e[0] != NULL || e[1] != NULL);
 
-  if (e[0] != NULL)
-  {
-    if (e[0]->is_triangle() || en == e[0]->en[0] || en == e[0]->en[2])
-      o1 = H2D_GET_H_ORDER(space->edata[e[0]->id].order);
-    else
-      o1 = H2D_GET_V_ORDER(space->edata[e[0]->id].order);
-  }
-
-  if (e[1] != NULL)
-  {
-    if (e[1]->is_triangle() || en == e[1]->en[0] || en == e[1]->en[2])
-      o2 = H2D_GET_H_ORDER(space->edata[e[1]->id].order);
-    else
-      o2 = H2D_GET_V_ORDER(space->edata[e[1]->id].order);
-  }
-
-  if (o1 == 0) return o2 == 0 ? 0 : o2;
-  if (o2 == 0) return o1;
-  return std::max(o1, o2);
+  if (e->is_triangle() || en == e->en[0] || en == e->en[2])
+    return H2D_GET_H_ORDER(space->edata[e[0]->id].order);
+  else
+    return H2D_GET_V_ORDER(space->edata[e[0]->id].order);
 }
+*/
 
-void NeighborSearch::compute_fn_values()
-{
-	for(int i = 0; i < n_neighbors; i++)
-	{
-		neighb_el = neighbors[i];
-		neighbor_edge = neighbor_edges[i].local_num_of_edge;
-		set_fn_values((Trans_flag)way_flag, i);
-		if(neighbor_edges[i].orientation == 1)
-			set_correct_direction(i);
-	}
-}
-
+/*
 void NeighborSearch::set_order_of_integration(int order)
 {
 	if(order < 0)
 		error("given order is negative.");
-	max_of_orders = order;
+	common_edge_order = order;
 }
-
-void NeighborSearch::set_solution(MeshFunction* solution)
-{
-	sol = solution;
-	quad = sol->get_quad_2d();
-	sol->set_active_element(central_el);
-	central_order = sol->get_fn_order();
-
-	if(active_edge == -1)
-		error("the common(active) edge wasn't set.");
-	orders.clear();
-	values_central.clear();
-	values_neighbor.clear();
-	compute_fn_values();
-}
+*/

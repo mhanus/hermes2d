@@ -156,10 +156,12 @@ public:
   /// Internal.
   virtual void set_active_element(Element* e);
 
+  enum SolutionType { SLN, EXACT, CNST, UNDEF };
+  SolutionType& get_type() { return type; }
 
 protected:
 
-  enum { SLN, EXACT, CNST, UNDEF } type;
+  SolutionType type;
 
   bool own_mesh;
   bool transform;
