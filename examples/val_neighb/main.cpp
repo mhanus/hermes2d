@@ -42,7 +42,8 @@ Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData
   Scalar result = 0;
   // here to get values from neighbor you have to use method get_fn_neighbor(). This is for safety.
   for (int i = 0; i < n; i++){
-     result += 0.5*wt[i] * (ext->fn[0]->val[i] + ext->get_fn_neighbor(0)->val[i]) * v->val[i];
+     //result += 0.5*wt[i] * (ext->fn[0]->val[i] + ext->get_fn_neighbor(0)->val[i]) * v->val[i];
+     result += 0.5*wt[i] * (ext->fn[0]->get_val_central(i) + ext->fn[0]->get_val_neighbor(i)) * v->val[i];
   }
   return result;
 }
