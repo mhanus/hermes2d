@@ -88,11 +88,12 @@ template<typename T>
 class Func
 {
 protected:
-  const int num_gip; ///< A number of integration points used by this intance.
   static const char* ERR_UNDEFINED_NEIGHBORING_ELEMENTS;
   
 public:
+  const int num_gip; ///< A number of integration points used by this intance.
   const int nc;	///< A number of components. Currently accepted values are 1 (H1, L2 space) and 2 (Hcurl, Hdiv space).
+  
   T *val;					// function values. If orders differ for a diffrent
                                                 // direction, this returns max(h_order, v_order).
   T *dx, *dy; 					// derivatives
@@ -126,7 +127,8 @@ public:
 
   /// Calculate this -= func for each function expations and each integration point.
   /** \param[in] func A function which is subtracted from *this. A number of integratio points and a number of component has to match. */
-  virtual void subtract(const Func<T>& func) {
+  //FIXME : It should be 'virtual', but then it doesn't compile.
+  void subtract(const Func<T>& func) {
     assert_msg(num_gip == func.num_gip, "Unable to subtract a function due to a different number of integration points (this: %d, other: %d)", num_gip, func.num_gip);
     assert_msg(nc == func.nc, "Unable to subtract a function due to a different number of components (this: %d, other: %d)", nc, func.nc);
     H2D_SUBTRACT_IF_NOT_NULL(val, func)
@@ -172,52 +174,54 @@ public:
     delete [] curl; curl = NULL;
   }
   
-  virtual void ~Func() { } // All deallocation done via free_fn / free_ord. 
-                           // This is to allow proper destruction of DiscontinuousFunc by applying delete on a Func pointer.
+  virtual ~Func() { }; // All deallocation done via free_fn / free_ord. 
+                       // This is to allow proper destruction of DiscontinuousFunc by applying delete on a Func pointer.
   
-  virtual T& get_val_central(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); } 
-  virtual T& get_val_neighbor(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
-  virtual T& get_dx_central(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
-  virtual T& get_dx_neighbor(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
-  virtual T& get_dy_central(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS);  }
-  virtual T& get_dy_neighbor(int k) { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
+  virtual T& get_val_central(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); } 
+  virtual T& get_val_neighbor(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
+  virtual T& get_dx_central(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
+  virtual T& get_dx_neighbor(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
+  virtual T& get_dy_central(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS);  }
+  virtual T& get_dy_neighbor(int k) const { error(ERR_UNDEFINED_NEIGHBORING_ELEMENTS); }
 };
 
-#include "neighbor.h"
-
-#define GET_CENT(__ATTRIB) return (fn_central != NULL ? fn_central->__ATTRIB[k] : zero;
-#define GET_NEIB(__ATTRIB) return (fn_neighbor != NULL ? fn_neighbor->__ATTRIB[ reverse_neighbor_side ? num_gip-k-1 : k ] : zero;
+#define GET_CENT(__ATTRIB) return (fn_central != NULL) ? fn_central->__ATTRIB[k] : zero;
+#define GET_NEIB(__ATTRIB) return (fn_neighbor != NULL) ? fn_neighbor->__ATTRIB[ reverse_neighbor_side ? fn_neighbor->num_gip-k-1 : k ] : zero;
 template<typename T>
 class DiscontinuousFunc : public Func<T>
 {
   private:
     Func<T> *fn_central, *fn_neighbor;
     bool reverse_neighbor_side;
-    static const T zero;
+    static T zero;
     
   public: 
-    DiscontinuousFunc(const Func<T>* fn, bool support_on_neighbor = false) : Func(fn->num_gip, fn->nc), 
-                                                                             fn_central(NULL), fn_neighbor(NULL),
-                                                                             reverse_neighbor_side(false) { 
+    DiscontinuousFunc(Func<T>* fn, bool support_on_neighbor = false, bool reverse = false) :
+      Func<T>(fn->num_gip, fn->nc), 
+      fn_central(NULL), fn_neighbor(NULL),
+      reverse_neighbor_side(reverse) 
+    { 
       assert_msg(fn != NULL, "Invalid arguments to DiscontinuousFunc constructor.");
       if (support_on_neighbor) fn_neighbor = fn; else fn_central = fn;
     }
     
-    DiscontinuousFunc(const Func<T>* fn_c, const Func<T>* fn_n, bool reverse = false) : Func(fn_c->num_gip, fn_c->nc) { 
+    DiscontinuousFunc(Func<T>* fn_c, Func<T>* fn_n, bool reverse = false) : 
+      Func<T>(fn_c->num_gip, fn_c->nc),
+      fn_central(fn_c),
+      fn_neighbor(fn_n),
+      reverse_neighbor_side(reverse)
+    { 
       assert_msg(fn_c != NULL && fn_n != NULL, "Invalid arguments to DiscontinuousFunc constructor.");
       assert_msg(fn_c->num_gip != fn_n->num_gip || fn_c->nc != fn_n->nc,
                  "DiscontinuousFunc must be formed by two Func's with same number of integration points and components.");
-      fn_central = fn_c;
-      fn_neighbor = fn_n;
-      reverse_neighbor_side = reverse;
     }
     
-    T& get_val_central(int k) { GET_CENT(val); }
-    T& get_val_neighbor(int k) { GET_NEIB(val); }
-    T& get_dx_central(int k) { GET_CENT(dx); }
-    T& get_dx_neighbor(int k) { GET_NEIB(dx); }
-    T& get_dy_central(int k) { GET_CENT(dy); }
-    T& get_dy_neighbor(int k) { GET_NEIB(dy); }
+    T& get_val_central(int k) const { GET_CENT(val); }
+    T& get_val_neighbor(int k) const { GET_NEIB(val); }
+    T& get_dx_central(int k) const { GET_CENT(dx); }
+    T& get_dx_neighbor(int k) const { GET_NEIB(dx); }
+    T& get_dy_central(int k) const { GET_CENT(dy); }
+    T& get_dy_neighbor(int k) const { GET_NEIB(dy); }
     
     #ifdef H2D_SECOND_DERIVATIVES_ENABLED
       T& get_laplace_central(int k) { GET_CENT(laplace); }
