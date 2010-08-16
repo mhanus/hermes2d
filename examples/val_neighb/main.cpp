@@ -42,6 +42,7 @@ Scalar linear_form_surf(int n, double *wt, Func<Real> *v, Geom<Real> *e, ExtData
   Scalar result = 0;
   // here to get values from neighbor you have to use method get_fn_neighbor(). This is for safety.
   for (int i = 0; i < n; i++){
+     //DEPRECATED 
      //result += 0.5*wt[i] * (ext->fn[0]->val[i] + ext->get_fn_neighbor(0)->val[i]) * v->val[i];
      result += 0.5*wt[i] * (ext->fn[0]->get_val_central(i) + ext->fn[0]->get_val_neighbor(i)) * v->val[i];
   }
@@ -129,72 +130,6 @@ int main(int argc, char* argv[])
   // if you want to work in linear surface form with values from neighbors use flag H2D_ANY_INNER_EDGE.
   wf.add_vector_form_surf(callback(linear_form_surf), H2D_ANY_INNER_EDGE, Tuple<MeshFunction* >(&xprev));
 
-  Shapeset *shapeset = space.get_shapeset();
-  PrecalcShapeset pss(shapeset);
-  AsmList al_c, al_n;
-  pss.set_quad_2d(&g_quad_2d_std);
-  
-  Element *e = mesh.get_element(3);
-  pss.set_active_element(e);
-  space.get_element_assembly_list(e, &al_c);
-  printf("CENT\n");
-  for (int j = 0; j < al_c.cnt; j++) {
-    int idx = al_c.idx[j];
-    pss.set_active_shape(idx);
-    printf("%d/%d\n", idx, al_c.dof[j]);
-    //int order = pss.get_shapeset()->get_order(idx);
-    {
-      int order = H2D_GET_H_ORDER( pss.get_shapeset()->get_order(idx) );
-      printf(" %s : ", "HORIZ");
-      pss.set_quad_order(order, H2D_FN_VAL);
-      Quad2D* quad = pss.get_quad_2d();
-      double* val = pss.get_fn_values();
-      double3* pts = quad->get_points(order);
-      for (int k = 0; k < quad->get_num_points(order); k++)
-        printf("(%f,%f) : %f\n\t     ", pts[k][0], pts[k][1], val[k]);
-      printf("\n");
-    }
-    {
-      int order = H2D_GET_V_ORDER( pss.get_shapeset()->get_order(idx) );
-      printf(" %s : ", "VERT");
-      pss.set_quad_order(order, H2D_FN_VAL);
-      Quad2D* quad = pss.get_quad_2d();
-      int eo = quad->get_edge_points(3, order);
-      double3* pts = quad->get_points(eo);
-      pss.set_quad_order(eo, H2D_FN_VAL);
-      double* val = pss.get_fn_values();
-      for (int k = 0; k < quad->get_num_points(eo); k++)
-        printf("(%f,%f) : %f/%f\n\t     ", pts[k][0], pts[k][1], val[k], pss.get_shapeset()->get_fn_value(idx, pts[k][0], pts[k][1], 0));
-      printf("\n");
-    }
-  }
-  
-  printf("\t %d \t\n", g_quad_2d_std.get_mode());
-  
-  e = mesh.get_element(4);
-  pss.set_active_element(e);
-  space.get_element_assembly_list(e, &al_n);
-  printf("NEIB\n");  
-  for (int j = 0; j < al_n.cnt; j++) {
-    int idx = al_n.idx[j];
-    pss.set_active_shape(idx);
-    printf("%d/%d\n", idx, al_n.dof[j]);
-    int order = pss.get_shapeset()->get_order(idx);
-    printf(" %s : ", get_quad_order_str(order).c_str());
-    pss.set_quad_order(order, H2D_FN_VAL);
-    Quad2D* quad = pss.get_quad_2d();
-    double* val = pss.get_fn_values();
-    double val_tst = pss.get_shapeset()->get_fn_value(idx, -0.1, 0.5, 0);
-    printf("%f\n", val_tst);
-    double3* pts = quad->get_points(order);
-    for (int k = 0; k < quad->get_num_points(order); k++)
-      printf("(%f,%f) : %f\n\t     ", pts[k][0], pts[k][1], val[k]);
-    printf("\n");
-  }
-  fflush(stdout);
-  
-  View::wait();
-  return 0;
   // assemble and solve the finite element problem
   LinSystem sys(&wf, &umfpack, &space);
   sys.assemble();
