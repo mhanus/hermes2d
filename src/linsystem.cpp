@@ -635,7 +635,7 @@ void LinSystem::assemble(bool rhsonly)
 						if (!nat[m]) continue;
 						ep[edge].base = trav.get_base();
 						ep[edge].space_v = spaces[m];
-            for (int i = 0; i < am->cnt; i++)list
+            for (int i = 0; i < am->cnt; i++)
 						{
 							if (am->dof[i] < 0) continue;
 							fv->set_active_shape(am->idx[i]);
@@ -687,7 +687,7 @@ void LinSystem::assemble(bool rhsonly)
             {
               // Single mesh version: 
               // Both basis and test functions are defined on the same mesh, with the same neighborhood of a given element.
-              
+                            
               if (nbs_v == NULL) {
                 nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m]);
                 nbs_v->set_active_edge(edge);
@@ -696,32 +696,37 @@ void LinSystem::assemble(bool rhsonly)
                 nbs_u = new NeighborSearch(refmap[n].get_active_element(), spaces[n]);
                 nbs_u->set_active_edge(edge);
               }
-                
-              nbs_v->active_shape.attach(fv);
-              nbs_u->active_shape.attach(fu);
               
               for (int segment = 0; segment < nbs_v->get_number_of_neighbs(); segment++) 
               { 
                 nbs_u->set_active_segment(segment);
                 nbs_v->set_active_segment(segment);
                 
-                int u_shapes_cnt = nbs_u->enumerate_neighboring_shapes(an);
-                int v_shapes_cnt = nbs_v->enumerate_neighboring_shapes(am);
+                int u_shapes_cnt = nbs_u->enumerate_supported_shapes(fu, an);
+                int v_shapes_cnt = nbs_v->enumerate_supported_shapes(fv, am);
                 
                 scalar bi, **mat = get_matrix_buffer(std::max(u_shapes_cnt, v_shapes_cnt));
                 for (int i = 0; i < v_shapes_cnt; i++)
                 {               
-                  if ((k = nbs_v->neighboring_shapes->dof[i]) < 0) continue;
-                  nbs_v->active_shape.activate(i);
+                  if ((k = nbs_v->supported_shapes->dof[i]) < 0) continue;
+                  ExtendedShapeFnPtr active_shape_v = nbs_v->supported_shapes->get_extended_shape_fn(i);
                   
                   for (int j = 0; j < u_shapes_cnt; j++)
                   {
-                    nbs_u->active_shape.activate(j);
-                    bi = eval_form_neighbor(bfs, nbs_u, nbs_v, ep+edge) * nbs_v->active_shape.coef * nbs_u->active_shape.coef;
-                    if (nbs_u->neighboring_shapes->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
+                    ExtendedShapeFnPtr active_shape_u = nbs_u->supported_shapes->get_extended_shape_fn(j);
+                    
+                    // NOTE: V eval_form_neighbor pouzivam NeighborSearch jen pro vyhodnocovani ext funkci. Diky single meshi jsem vzal jiz nastaveny nbs_v,
+                    //  protoze to odpovida tomu, jak se v klasickem eval_formu vola vola init_ext_fn s RefMapou rv (ktera se ale nikde v te funkci nepouzije).
+                    //  Nechapu ale, proc se tam geometricky veci (body, normaly, ...) inicializujou podle RefMapy ru. Moje hypoteza je ta, ze se assembluje
+                    //  na union meshi a obe refmapy ru i rv tedy transformuji integracni body na stejne fyzikalni souradnice, ale nevim. 
+                    //  Jinak v multimeshi asi budeme muset mit pro vyhodnocovani ext funkci jeste jeden specialni NeighborSearch pro kazdou z nich, protoze kazda z nich muze byt
+                    //  def. na jinem meshi, nezavisle na u,v. Bohuzel v soucasnosti Solution neuchovava ukazatel na Space, ktery potrebuju pro urceni spravneho
+                    //  radu na aktivni hrane, takze bude treba se v Solution jeste trochu vrtat.
+                    bi = eval_form_neighbor(bfs, nbs_v, active_shape_u, active_shape_v, ep+edge) * active_shape_v->coef * active_shape_u->coef;
+                    if (nbs_u->supported_shapes->dof[j] >= 0) mat[i][j] = bi; else Dir[k] -= bi;
                   }
                 }
-                insert_block(mat, nbs_v->neighboring_shapes->dof, nbs_u->neighboring_shapes->dof, v_shapes_cnt, u_shapes_cnt);
+                insert_block(mat, nbs_v->supported_shapes->dof, nbs_u->supported_shapes->dof, v_shapes_cnt, u_shapes_cnt);
               }
             }  
 						else
@@ -751,32 +756,33 @@ void LinSystem::assemble(bool rhsonly)
 						}
 						// here the form will use for evaluation information from neighbors
 						else if(lfs->area == H2D_ANY_INNER_EDGE)
-						{
+						{ 
               if (nbs_v == NULL) {
                 nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m]);
                 nbs_v->set_active_edge(edge);
               }
-              
-              nbs_v->active_shape.attach(fv);
-              
-              for (int segment = 0; segment < nbs_v->get_number_of_neighbs(); segment++) 
+                            
+              for (int segment = 0; segment < nbs_u->get_number_of_neighbs(); segment++) 
               {
-                int v_shapes_cnt = nbs_v->enumerate_neighboring_shapes(am);
-                for (int i = 0; i < v_shapes_cnt; i++)
+                nbs_v->set_active_segment(segment);
+                
+                for (int i = 0; i < am->cnt; i++)
                 {
-                  if (nbs_v->neighboring_shapes->dof[i] < 0) continue;
-                  nbs_v->active_shape.activate(i);
-                  RHS[nbs_v->neighboring_shapes->dof[i]] += eval_form_neighbor(lfs, nbs_v, ep+edge) * nbs_v->active_shape.coef;
+                  if (am->dof[i] < 0) continue;
+                  fv->set_active_shape(am->idx[i]);
+                  nbs_v->apply_transforms(fv, &refmap[m]);
+                  RHS[am->dof[i]] += eval_form_neighbor(lfs, nbs_v, fv, &refmap[m], ep+edge) * am->coef[i];
+                  nbs_v->restore_transforms(fv, &refmap[m]);
                 }
               }
 						}
 						else
 							continue;
 					}
+          
+          if (nbs_u != NULL) delete nbs_u;
+          if (nbs_v != NULL) delete nbs_v;
         }
-        
-        if (nbs_u != NULL) delete nbs_u;
-        if (nbs_v != NULL) delete nbs_v;
       }
       delete_cache();
     }
@@ -839,9 +845,9 @@ ExtData<Ord>* LinSystem::init_ext_fns_ord(std::vector<MeshFunction *> &ext, Neig
     int order_of_current_ext = neighbors[j]->get_edge_fn_order(ext[j]);
     if(order_of_current_ext > max_of_orders)
     max_of_orders = order_of_current_ext;
-}
+  }
 */  
-  Func<Ord>** fake_ext_fns = new DiscontinuousFunc<Ord>*[ext.size()];
+  Func<Ord>** fake_ext_fns = new Func<Ord>*[ext.size()];
   for (int j = 0; j < ext.size(); j++)
     fake_ext_fns[j] = nbs->init_ext_fn_ord(ext[j]);
   
@@ -853,9 +859,9 @@ ExtData<Ord>* LinSystem::init_ext_fns_ord(std::vector<MeshFunction *> &ext, Neig
 }
 
 // Initialize external functions (obtain values, derivatives,...)
-ExtData<scalar>* LinSystem::init_ext_fns(std::vector<MeshFunction *> &ext, const int order, NeighborSearch* nbs)
+ExtData<scalar>* LinSystem::init_ext_fns(std::vector<MeshFunction *> &ext, NeighborSearch* nbs, const int order)
 {  
-  Func<scalar>** ext_fns = new DiscontinuousFunc<scalar>*[ext.size()];
+  Func<scalar>** ext_fns = new Func<scalar>*[ext.size()];
   for(int j = 0; j < ext.size(); j++)
     ext_fns[j] = nbs->init_ext_fn(ext[j], order);
  
@@ -1070,20 +1076,107 @@ scalar LinSystem::eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMa
                     // the weights.
 }
 
-scalar LinSystem::eval_form_neighbor(WeakForm::BiFormSurf* bf, NeighborSearch* nbs_u, NeighborSearch* nbs_v, EdgePos* ep)
+scalar LinSystem::eval_form_neighbor(WeakForm::BiFormSurf* bf, NeighborSearch* nbs_v, ExtendedShapeFnPtr efu, ExtendedShapeFnPtr efv, EdgePos* ep)
 {
-  // tohle bude hodne podobny klasicky eval_form, akorat se budou pouzivat veci z nbs_u, nbs_v
+  PrecalcShapeset* fu = efu->get_activated_pss();
+  PrecalcShapeset* fv = efv->get_activated_pss();
+  RefMap* ru = efu->get_activated_refmap();
+  RefMap* rv = efv->get_activated_refmap();
+  
+  // determine the integration order
+  int inc = (fu->get_num_components() == 2) ? 1 : 0;
+  DiscontinuousFunc<Ord>* ou = efu->get_discontinuous_func(init_fn_ord(efu->get_fn_order() + inc));
+  DiscontinuousFunc<Ord>* ov = efv->get_discontinuous_func(init_fn_ord(efv->get_fn_order() + inc));
+  
+  ExtData<Ord>* fake_ext = init_ext_fns_ord(bf->ext, nbs_v);
+  
+  double fake_wt = 1.0;
+  Geom<Ord>* fake_e = init_geom_ord();
+  Ord o = bf->ord(1, &fake_wt, ou, ov, fake_e, fake_ext);
+  int order = ru->get_inv_ref_order();
+  order += o.get_order();
+  limit_order(order);
+  
+  ou->free_ord(); delete ou;
+  ov->free_ord(); delete ov;
+  delete fake_e;
+  fake_ext->free_ord(); delete fake_ext;
+  
+  // eval the form
+  Quad2D* quad = fu->get_quad_2d();
+  assert(ep->edge < 4);
+  int eo = quad->get_edge_points(ep->edge, order); // FIXME: Maximum edge integration order (currently set to 24) is used every time here.
+  double3* pt = quad->get_points(eo);
+  int np = quad->get_num_points(eo);
+  
+  // init geometry and jacobian*weights
+  if (cache_e[eo] == NULL)
+  {
+    cache_e[eo] = init_geom_surf(ru, ep, eo);
+    double3* tan = ru->get_tangent(ep->edge, eo);
+    cache_jwt[eo] = new double[np];
+    for(int i = 0; i < np; i++)
+      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+  }
+  Geom<double>* e = cache_e[eo];
+  double* jwt = cache_jwt[eo];
+  
+  // function values and values of external functions
+  DiscontinuousFunc<double>* u = efu->get_discontinuous_func( get_fn(fu, ru, eo) );
+  DiscontinuousFunc<double>* v = efv->get_discontinuous_func( get_fn(fv, rv, eo) );
+  ExtData<scalar>* ext = init_ext_fns(bf->ext, nbs_v, order);
+  
+  scalar res = bf->fn(np, jwt, u, v, e, ext);
+  
+  ext->free(); delete ext;
+  return 0.5 * res; // Edges are parameterized from 0 to 1 while integration weights
+  // are defined in (-1, 1). Thus multiplying with 0.5 to correct
+  // the weights.
 }
 
 
 // Actual evaluation of surface linear form, just in case using information from neighbors.
 // Used only for inner edges.
-scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf* lf, NeighborSearch* nbs_v, EdgePos* ep)
+scalar LinSystem::eval_form_neighbor(WeakForm::LiFormSurf* lf, NeighborSearch* nbs_v, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep)
 {	
-	Geom<Ord>* fake_e = init_geom_ord();
-	double fake_wt = 1.0;
+  Func<Ord>* ov = init_fn_ord(fv->get_edge_fn_order(ep->edge));
+  ExtData<Ord>* fake_ext = init_ext_fns_ord(lf->ext, nbs_v);
   
-  // tohle bude hodne podobny klasicky eval_form, akorat se budou pouzivat veci z nbs_v
+  double fake_wt = 1.0;
+  Geom<Ord>* fake_e = init_geom_ord();
+  Ord o = lf->ord(1, &fake_wt, ov, fake_e, fake_ext);
+  int order = rv->get_inv_ref_order();
+  order += o.get_order();
+  limit_order(order);
+  
+  ov->free_ord(); delete ov;
+  delete fake_e;
+  fake_ext->free_ord(); delete fake_ext;
+  
+  Quad2D* quad = fv->get_quad_2d();
+  assert(ep->edge < 5);
+  int eo = quad->get_edge_points(ep->edge, order);
+  double3* pt = quad->get_points(eo);
+  int np = quad->get_num_points(eo);
+  // init geometry and jacobian*weights
+  if (cache_e[eo] == NULL)
+  {
+    cache_e[eo] = init_geom_surf(rv, ep, eo);
+    double3* tan = rv->get_tangent(ep->edge);
+    cache_jwt[eo] = new double[np];
+    for(int i = 0; i < np; i++)
+      cache_jwt[eo][i] = pt[i][2] * tan[i][2];
+  }
+  Geom<double>* e = cache_e[eo];
+  double* jwt = cache_jwt[eo];
+  // function values and values of external functions
+  Func<double>* v = get_fn(fv, rv, eo);
+  ExtData<scalar>* ext = init_ext_fns(lf->ext, nbs_v, eo);
+  scalar res = lf->fn(np, jwt, v, e, ext);
+  ext->free(); delete ext;
+  return 0.5 * res; // Edges are parametrized from 0 to 1 while integration weights
+                    // are defined in (-1, 1). Thus multiplying with 0.5 to correct
+                    // the weights.
 
 /*
   Quad2D* quad = fv->get_quad_2d();

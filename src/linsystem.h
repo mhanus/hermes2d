@@ -269,7 +269,7 @@ protected:
   ExtData<Ord>* init_ext_fns_ord(std::vector<MeshFunction *> &ext);
   ExtData<Ord>* init_ext_fns_ord(std::vector<MeshFunction *> &ext, NeighborSearch* nbs);
   ExtData<scalar>* init_ext_fns(std::vector<MeshFunction *> &ext, RefMap *rm, const int order);
-  ExtData<scalar>* init_ext_fns(std::vector< MeshFunction* >& ext, const int order, NeighborSearch* nbs);
+  ExtData<scalar>* init_ext_fns(std::vector< MeshFunction* >& ext, NeighborSearch* nbs, const int order);
   Func<double>* get_fn(PrecalcShapeset *fu, RefMap *rm, const int order);
 
   // Key for caching transformed function values on elements
@@ -325,8 +325,8 @@ protected:
   scalar eval_form(WeakForm::LiFormVol *lf, PrecalcShapeset *fv, RefMap *rv);
   scalar eval_form(WeakForm::BiFormSurf *bf, PrecalcShapeset *fu, PrecalcShapeset *fv, RefMap *ru, RefMap *rv, EdgePos* ep);
   scalar eval_form(WeakForm::LiFormSurf *lf, PrecalcShapeset *fv, RefMap *rv, EdgePos* ep);
-  scalar eval_form_neighbor(WeakForm::BiFormSurf* bf, NeighborSearch* nbs_u, NeighborSearch* nbs_v, EdgePos* ep);
-  scalar eval_form_neighbor(WeakForm::LiFormSurf* lf, NeighborSearch* nbs_v, EdgePos* ep);
+  scalar eval_form_neighbor(WeakForm::BiFormSurf* bf, NeighborSearch* nbs_v, ExtendedShapeFnPtr efu, ExtendedShapeFnPtr efv, EdgePos* ep);
+  scalar eval_form_neighbor(WeakForm::LiFormSurf* lf, NeighborSearch* nbs_v, PrecalcShapeset* fv, RefMap* rv, EdgePos* ep);
   
   scalar** get_matrix_buffer(int n)
   {
