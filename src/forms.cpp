@@ -18,8 +18,14 @@
 template<typename T>
 const char* Func<T>::ERR_UNDEFINED_NEIGHBORING_ELEMENTS = "Neighboring elements are not defined and so are not function traces on their interface. "
                                                           "Did you forget setting H2D_ANY_INNER_EDGE in add_matrix/vector_form?";
-template<typename T> 
-T DiscontinuousFunc<T>::zero = T(0);
+
+// Explicit template specializations are needed here, general template<T> T DiscontinuousFunc<T>::zero = T(0) doesn't work.
+template<> Ord DiscontinuousFunc<Ord>::zero = Ord(0);
+template<> double DiscontinuousFunc<double>::zero = 0.0;
+#ifdef H2D_COMPLEX
+  #include <complex>
+  template<> std::complex<double> DiscontinuousFunc<std::complex<double> >::zero = std::complex<double>(0);
+#endif
 
 // Integration order for coordinates, normals and tangents is one
 Geom<Ord>* init_geom_ord()
