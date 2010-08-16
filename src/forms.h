@@ -323,6 +323,8 @@ public:
 	ExtData() {
 		nf = 0;
 		fn = NULL;
+    
+    // DEPRECATED
 		nf_neighbor = 0;
 		fn_neighbor = NULL;
 	}
@@ -337,6 +339,7 @@ public:
     delete [] fn;
   }
 
+  // DEPRECATED
   void free_neighbor()
   {
     for (int i = 0; i < nf_neighbor; i++)
@@ -358,6 +361,7 @@ public:
     delete [] fn;
   }
 
+  // DEPRECATED
   void free_neighbor_ord()
   {
     for (int i = 0; i < nf_neighbor; i++)
@@ -370,6 +374,7 @@ public:
 
 
   // Used for getting neighbor function values in forms (now only in linear surface form)
+  // DEPRECATED: We can now use DiscontinuousFunc pointers in 'fn' to represent the double-valued functions.
   int get_nf_neighbor()
   {
   	return nf_neighbor;
