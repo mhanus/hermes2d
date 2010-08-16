@@ -196,7 +196,7 @@ scalar* L2Space::get_bc_projection(EdgePos* ep, int order)
   
   //if (mode == H2D_MODE_QUAD) order = H2D_MAKE_QUAD_ORDER(order, order);
   int* bubble_indices = shapeset->get_bubble_indices(order);
-  int num_bubbles = shapeset.get_num_bubbles(order);
+  int num_bubbles = shapeset->get_num_bubbles(order);
   scalar* proj = new scalar[num_bubbles];
   
   Quad2DStd quad2d;
@@ -233,21 +233,20 @@ scalar* L2Space::get_bc_projection(EdgePos* ep, int order)
   }
 
   // solve the system using a precalculated Cholesky decomposed projection matrix
-  cholsl(l2_proj_mat[mode][ep->edge], order, chol_p[mode][ep->edge], proj, proj);
+  cholsl(l2_proj_mat[mode][ep->edge], order, l2_chol_p[mode][ep->edge], proj, proj);
 
   return proj;
 }
 
 void L2Space::precalculate_projection_matrix(int mode)
 { 
-  int mode = ep->base->get_mode();
   shapeset->set_mode(mode);
   
-  int order = shapeset.get_max_order();
+  int order = shapeset->get_max_order();
   if (mode == H2D_MODE_QUAD) order = H2D_MAKE_QUAD_ORDER(order, order);
   int* bubble_indices = shapeset->get_bubble_indices(order);
   
-  int num_bubbles = shapeset.get_num_bubbles(order);
+  int num_bubbles = shapeset->get_num_bubbles(order);
 
   Quad2DStd quad2d;
   quad2d.set_mode(mode);
