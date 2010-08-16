@@ -19,6 +19,11 @@
 #include "quad_all.h"
 #include "shapeset_l2_all.h"
 
+
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
 // Arrays that store precalculated Cholesky decomposition data for each element type and each edge.
 double** L2Space::l2_proj_mat[2][4] = { { NULL, NULL, NULL, NULL }, { NULL, NULL, NULL, NULL } };
 double*  L2Space::l2_chol_p[2][4]   = { { NULL, NULL, NULL, NULL }, { NULL, NULL, NULL, NULL } };
@@ -283,7 +288,17 @@ void L2Space::precalculate_projection_matrix(int mode)
       }
     }
     
+    double **a = l2_proj_mat[mode][edge];
+    cout << endl;
+    for (int i = 0; i < num_bubbles; i++) {
+      for (int j = 0; j < num_bubbles; j++) {
+        cout << setw(15) << a[i][j];
+      }
+      cout << endl;
+    }
+    cout << endl;
+    
     l2_chol_p[mode][edge] = new double[num_bubbles];
-    choldc(l2_proj_mat[mode][edge], num_bubbles, l2_chol_p[mode][edge]);
+    choldc(a, num_bubbles, l2_chol_p[mode][edge]);
   }
 }

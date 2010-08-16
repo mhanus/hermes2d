@@ -174,18 +174,34 @@ void ludcmp(double** a, int n, int* indx, double* d)
   delete [] vv;
 }
 
+#include <iostream>
+#include <iomanip>
+using namespace std;
 
 void choldc(double **a, int n, double p[])
 {
   int i, j, k;
+  
+  for (int r = 0; r < n; r++) {
+    for (int s = 0; s < n; s++) {
+      cout << setw(15) << a[r][s];
+    }
+    cout << endl;
+  }
+  cout << endl;
+  
   for (i = 0; i < n; i++)
   {
     for (j = i; j < n; j++)
     {
       double sum = a[i][j];
       k = i;
-      while (--k >= 0)
+      while (--k >= 0) {
+        cout << "a(" << i << "," << k << ") = " << a[i][k] << "\t";
+        cout << "a(" << j << "," << k << ") = " << a[j][k] << "\t";
+        cout << endl;
         sum -= a[i][k] * a[j][k];
+      }
       
       if (i == j)
       {
