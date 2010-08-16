@@ -43,6 +43,7 @@ enum NeighboringElements{
   DG_NEIGHBOR 
 };
 */
+
 class H2D_API NeighborSearch
 {
 public:
@@ -89,6 +90,7 @@ public:
   * \param[in] active_segment Part of the active edge shared by the central element and selected neighbor (corresponds to how the neighbors have been enumerated in set_active_edge). 
   */
   DiscontinuousFunc<scalar>* init_ext_fn(MeshFunction* fu, int order);
+  DiscontinuousFunc<Ord>* init_ext_fn_ord(Solution* fu);
   DiscontinuousFunc<Ord>* init_ext_fn_ord(MeshFunction* fu);
   
 /*  
@@ -96,63 +98,19 @@ public:
   Func< scalar >* get_fn_neighbor() { return fn_neighbor; }
 */  
   void set_active_segment(int segment);
-  int enumerate_neighboring_shapes(AsmList* al);
+  int make_edge_order(int encoded_order); 
+  int enumerate_supported_shapes(PrecalcShapeset*pss, AsmList* al);    
+  void apply_transforms(PrecalcShapeset* pss, RefMap* rm);
+  void restore_transforms(PrecalcShapeset* pss, RefMap* rm);
   
-    
-  class NeighborhoodAssemblyInfo
-  {
-    public:
-      int cnt;
-      int *dof;
-    
-    private:
-      NeighborhoodAssemblyInfo() {
-        assert(central_al != NULL && neighbor_al != NULL);
-        
-        cnt = central_al->cnt + neighbor_al->cnt;
-        dof = new int [cnt];
-        memcpy(dof, central_al->dof, sizeof(int)*central_al->cnt);
-        memcpy(dof + central_al->cnt, neighbor_al->dof, sizeof(int)*neighbor_al->cnt);
-      }
-      
-      ~NeighborhoodAssemblyInfo() {  delete [] dof; }
-  };
-     
-  class ExtendedShapeFunction
-  {
-    private:
-      PrecalcShapeset *spss;
-      RefMap *rm;
-      
-      int order;
-      bool support_on_neighbor;
-      
-      ExtendedShapeFunction() : pss(NULL), rm(NULL), 
-                                idx(-1), dof(-1), coef(-1), order(-1), 
-                                original_transform(0), support_on_neighbor(false) {};
-                                
-      ~ExtendedShapeFunction() { 
-        if (pss != NULL) delete pss; if (rm != NULL) delete rm; 
-      }
-      
-    public:      
-      int idx;      ///< shape function index
-      int dof;      ///< basis function number
-      scalar coef;  ///< coefficient
-      
-      void attach(PrecalcShapeset* pss);
-      void activate(int index);
-      
-      RefMap* get_refmap() { return rm; }
-      PrecalcShapeset* get_pss() { return spss; }
-  };
   
-  NeighborhoodAssemblyInfo *neighboring_shapes; 
-  ExtendedShapeFunction active_shape;
+  class ExtendedShapeset;
+  ExtendedShapeset *supported_shapes; 
+  
   
 private:
   static const char* ERR_ACTIVE_SEGMENT_NOT_SET;
-	static const int max_n_trans;    //!< Number of allowed transformations, see "push_transform" in transform.h.
+	static const int max_n_trans = 20;    //!< Number of allowed transformations, see "push_transform" in transform.h.
 
 	int n_neighbors; //!< Number of neighbors.
 	
@@ -160,8 +118,6 @@ private:
   Space* space;
 	Element* central_el; //!< Central element.
 	Element* neighb_el;  //!< Actual neighbor element we are working with,
-  AsmList* central_al;
-  AsmList* neighbor_al;
      
 	int transformations[max_n_trans][max_n_trans];	//!< Table of transformations for all neighbors.
 	int n_trans[max_n_trans]; //!< Number of transformations for every neighbor.
@@ -182,6 +138,7 @@ private:
 */
 	int way_flag; //!< This flag holds which way was used on the active edge. So is equal to one of the members of Trans_flag.
 
+  int original_shape_fn_transformation;
 
 	std::vector<Element*> neighbors; //!<  Vector containing pointers to  all neighbors. 
   
@@ -231,7 +188,6 @@ private:
    *
 int get_edge_order_internal(Element* e, int edge);
 */  
-  int make_edge_order(int encoded_order); 
   
 /*
   /*! Just reverse values in vector.
@@ -273,7 +229,7 @@ int get_edge_order_internal(Element* e, int edge);
    * the neighbor edge are middle vertex and parent2.
    * \param[out] edge_info The relative orientation is copied into the struct NeighborEdgeInfo.
    */
-	int direction_neighbor_edge(int parent1, int parent2);
+	int direction_neighbor_edge(int parent1, int parent2, int segment);
 
   //! Clears the vectors holding arrays of function values and pointers to Func instances for neighboring elements by calling the corresponding deallocators.
   //! This does not alter the capacity of the vectors reserved in constructor.
@@ -281,7 +237,91 @@ int get_edge_order_internal(Element* e, int edge);
   
   //! Cleaning of internal structures before a new edge is set as active.
   void reset_neighb_info();
+  
+  public:
+    class ExtendedShapeset
+    {
+      public:
+        class ExtendedShapeFunction
+        {
+          private:
+            NeighborSearch *neibhood;
+            PrecalcShapeset *spss;
+            RefMap *rm;
+            
+            int order;
+            bool support_on_neighbor;
+            bool reverse_neighbor_side;
+            
+            void activate(int index, AsmList* central_al, AsmList* neighb_al);
+            
+            ExtendedShapeFunction(NeighborSearch* neighborhood, PrecalcShapeset* pss);
+            ~ExtendedShapeFunction() { delete spss; delete rm; }
+            
+          public:
+            int idx;      ///< shape function index
+            int dof;      ///< basis function number
+            scalar coef;  ///< coefficient
+            
+            RefMap* get_activated_refmap() { return rm; }
+            PrecalcShapeset* get_activated_pss() { return spss; }
+            int get_fn_order() { return order; }
+            
+            DiscontinuousFunc<double>* get_discontinuous_func(Func<double>* fu) {
+              return new DiscontinuousFunc<double>(fu, support_on_neighbor, reverse_neighbor_side);
+            }
+            DiscontinuousFunc<Ord>* get_discontinuous_func(Func<Ord>* fu) {
+              return new DiscontinuousFunc<Ord>(fu, support_on_neighbor);
+            }
+            
+          friend class NeighborSearch::ExtendedShapeset; // Only an ExtendedShapeset is allowed to create an ExtendedShapeFunction.
+        };
+        
+        ExtendedShapeFunction* get_extended_shape_fn(int index) { 
+          active_shape->activate(index, central_al, neighbor_al); 
+          return active_shape;
+        }
+        
+      private:
+        ExtendedShapeFunction *active_shape;
+        AsmList* central_al;
+        AsmList* neighbor_al;
+        
+        void combine_assembly_lists() {
+          assert(central_al != NULL && neighbor_al != NULL);
+          
+          cnt = central_al->cnt + neighbor_al->cnt;
+          dof = new int [cnt];
+          memcpy(dof, central_al->dof, sizeof(int)*central_al->cnt);
+          memcpy(dof + central_al->cnt, neighbor_al->dof, sizeof(int)*neighbor_al->cnt);
+        }
+        
+        void update(NeighborSearch* neighborhood) {
+          delete [] this->dof;
+          neighborhood->space->get_edge_assembly_list(neighborhood->neighb_el, neighborhood->neighbor_edge, neighbor_al);
+          combine_assembly_lists();
+        }
+        
+        ExtendedShapeset(NeighborSearch* neighborhood, PrecalcShapeset* pss, AsmList* central_al) : central_al(central_al)
+        {
+          neighbor_al = new AsmList();
+          neighborhood->space->get_edge_assembly_list(neighborhood->neighb_el, neighborhood->neighbor_edge, neighbor_al);
+          combine_assembly_lists(); 
+          active_shape = new ExtendedShapeFunction(neighborhood, pss);
+        }
+        
+        ~ExtendedShapeset() {  delete [] dof; delete active_shape; delete neighbor_al; }
+        
+      public:
+        int cnt;
+        int *dof;
+        
+      friend class NeighborSearch; // Only a NeighborSearch is allowed to create an ExtendedShapeset.
+    };
 };
+
+typedef NeighborSearch::ExtendedShapeset::ExtendedShapeFunction* ExtendedShapeFnPtr;
+
 
 
 #endif /* NEIGHBOR_H_ */
