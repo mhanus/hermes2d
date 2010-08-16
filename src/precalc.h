@@ -84,7 +84,8 @@ public:
 
   void dump_info(int quad, const char* filename); // debug
 
-
+  int get_edge_fn_order(int edge) { return make_edge_order(shapeset->get_order(index), edge); };
+  
 protected:
 
   Shapeset* shapeset;

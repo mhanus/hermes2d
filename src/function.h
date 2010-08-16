@@ -103,6 +103,21 @@ public:
 
   /// \brief Returns the polynomial degree of the function being represented by the class.
   int get_fn_order() const { return order; }
+  
+  /// \brief Returns the polynomial degree of the function at given edge. To be overriden in derived classes.
+  /// \param edge [in] Edge at which the order should be evaluated. (0-3)
+  virtual int get_edge_fn_order(int edge) { return order; }
+  
+  // Get the shapeset function orders.
+  int make_edge_order(int encoded_order, int edge)
+  { 
+    assert(edge < 4);
+    
+    if (element->is_triangle() || edge == 0 || edge == 2)
+      return H2D_GET_H_ORDER(encoded_order);
+    else
+      return H2D_GET_V_ORDER(encoded_order);
+  }
 
   /// \brief Returns the number of components of the function being represented by the class.
   int get_num_components() const { return num_components; }
