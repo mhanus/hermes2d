@@ -597,24 +597,24 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
               
               // Find all neighbors of active element accross active edge and divide it into segements
               // shared by the active element and distinct neighbors.
-              nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m]);
+              nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m]->get_mesh());
               nbs_v->set_active_edge(edge);
               nbs_v->attach_pss(fv, &refmap[m]);
               
-              nbs_u = new NeighborSearch(refmap[n].get_active_element(), spaces[n]);
+              nbs_u = new NeighborSearch(refmap[n].get_active_element(), spaces[n]->get_mesh());
               nbs_u->set_active_edge(edge);
               nbs_u->attach_pss(fu, &refmap[n]);
               
               // Go through each segment of the active edge.
-              for (int segment = 0; segment < nbs_v->get_number_of_neighbs(); segment++) 
+              for (int neighbor = 0; neighbor < nbs_v->get_number_of_neighbs(); neighbor++) 
               { 
-                bool needs_processing_u = nbs_u->set_active_segment(segment);
-                bool needs_processing_v = nbs_v->set_active_segment(segment);
+                bool needs_processing_u = nbs_u->set_active_segment(neighbor);
+                bool needs_processing_v = nbs_v->set_active_segment(neighbor);
                 
                 if (!needs_processing_u) continue;
                 
-                int u_shapes_cnt = nbs_u->extend_attached_shapeset(an);
-                int v_shapes_cnt = nbs_v->extend_attached_shapeset(am);
+                int u_shapes_cnt = nbs_u->extend_attached_shapeset(spaces[n], an);
+                int v_shapes_cnt = nbs_v->extend_attached_shapeset(spaces[m], am);
                 
                 scalar **local_stiffness_matrix = get_matrix_buffer(std::max(u_shapes_cnt, v_shapes_cnt));
                 for (int i = 0; i < v_shapes_cnt; i++)
@@ -684,13 +684,13 @@ void DiscreteProblem::assemble(Vector* init_vec, Matrix* mat_ext, Vector* dir_ex
             // here the form will use for evaluation information from neighbors
             else if(vfs->area == H2D_DG_INNER_EDGE)
             {       
-              nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m], false);
+              nbs_v = new NeighborSearch(refmap[m].get_active_element(), spaces[m]->get_mesh(), false);
               nbs_v->set_active_edge(edge);
               nbs_v->attach_pss(fv, &refmap[m]);              
               
-              for (int segment = 0; segment < nbs_v->get_number_of_neighbs(); segment++) 
+              for (int neighbor = 0; neighbor < nbs_v->get_number_of_neighbs(); neighbor++) 
               {
-                nbs_v->set_active_segment(segment, false);
+                nbs_v->set_active_segment(neighbor, false);
                 for (int i = 0; i < am->cnt; i++)       
                 {
                   if (am->dof[i] < 0) continue;
