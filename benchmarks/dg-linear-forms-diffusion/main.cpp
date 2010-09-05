@@ -1,4 +1,7 @@
 #include "hermes2d.h"
+#include <iostream>
+#include <typeinfo>
+using namespace std;
 #define H2D_REPORT_FILE "test.log"
 
 /*
@@ -30,6 +33,7 @@ Scalar linear_form(int n, double *wt, Func<Real> *u_ext[], Func<Real> *v, Geom<R
   for (int i = 0; i < n; i++){
     result += wt[i] * (6*e->x[i]+6*e->y[i]) * v->val[i];
   }
+  
   return result;
 }
 
